@@ -1,0 +1,13 @@
+[package]
+name = "deepbookv3"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sui_sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk"}
+sui-keys = { git = "https://github.com/mystenlabs/sui", package = "sui-keys"}
+sui-config = { git = "https://github.com/mystenlabs/sui", package = "sui-config"}
+shared-crypto = { git = "https://github.com/mystenlabs/sui", package = "shared-crypto"}
+tokio = { version = "1.2", features = ["full"] }
+anyhow = "1.0"
+bcs = "0.1.4"
