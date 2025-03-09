@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct BalanceManager {
-    pub address: String,
+    pub address: &'static str,
     pub trade_cap: Option<String>,
 }
 

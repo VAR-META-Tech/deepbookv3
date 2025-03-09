@@ -1,16 +1,17 @@
-use sui_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use sui_sdk::SuiClient;
-
 use crate::transactions::balance_manager::BalanceManagerContract;
 use crate::types::{BalanceManager, Coin, Pool};
 use crate::utils::config::DeepBookConfig;
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashMap;
+use sui_sdk::SuiClient;
+use sui_sdk::rpc_types::DevInspectResults;
+use sui_sdk::types::base_types::SuiAddress;
 
 #[derive(Clone)]
 pub struct DeepBookClient {
     client: SuiClient,
     config: DeepBookConfig,
-    address: String,
+    sender_address: SuiAddress,
     balance_manager: BalanceManagerContract,
     // deep_book: DeepBookContract,
     // deep_book_admin: DeepBookAdminContract,
@@ -21,7 +22,7 @@ pub struct DeepBookClient {
 impl DeepBookClient {
     pub fn new(
         client: SuiClient,
-        address: String,
+        sender_address: SuiAddress,
         env: &str,
         balance_managers: Option<HashMap<String, BalanceManager>>,
         coins: Option<HashMap<String, Coin>>,
@@ -30,7 +31,7 @@ impl DeepBookClient {
     ) -> Self {
         let config = DeepBookConfig::new(
             env,
-            address.clone(),
+            sender_address.clone(),
             admin_cap.clone(),
             balance_managers,
             coins,
@@ -40,7 +41,7 @@ impl DeepBookClient {
         Self {
             client,
             config: config.clone(),
-            address,
+            sender_address,
             balance_manager: BalanceManagerContract::new(config),
             // deep_book: DeepBookContract::new(config.clone()),
             // deep_book_admin: DeepBookAdminContract::new(config.clone()),
@@ -49,31 +50,59 @@ impl DeepBookClient {
         }
     }
 
-    // pub async fn check_manager_balance(
-    //     &self,
-    //     manager_key: &str,
-    //     coin_key: &str,
-    // ) -> Result<(String, f64), Box<dyn std::error::Error>> {
-    //     Ok(("Type".to_string(), 0.0))
-    // }
+    pub async fn check_manager_balance(
+        &self,
+        manager_key: &str,
+        coin_key: &str,
+    ) -> Result<(String, u64)> {
+        // Fetch coin type and manager ID
+        let coin = self.config.get_coin(coin_key);
+        let coin_type = coin.coin_type; // Clone to return as String
 
-    // pub fn check_manager_balance(
-    //     &self,
-    //     manager_key: &str,
-    //     coin_key: &str,
-    // ) -> ProgrammableTransactionBuilder {
-    //     let mut builder = ProgrammableTransactionBuilder::new();
-    //     let manager_id = self.config.get_balance_manager(manager_key).address.clone();
-    //     let coin = self.config.get_coin(coin_key);
+        let manager_id = self.config.get_balance_manager(manager_key).address;
 
-    //     builder.move_call(
-    //         self.config.deepbook_package_id.clone(),
-    //         "balance_manager".to_string(),
-    //         "balance".to_string(),
-    //         vec![coin.coin_type.clone()],
-    //         vec![manager_id.into()],
-    //     );
+        // Create transaction
+        let tx_kind = self
+            .balance_manager
+            .check_manager_balance(&self.client, manager_id, &coin_type)
+            .await
+            .context("Failed to create balance check transaction")?;
 
-    //     builder
-    // }
+        // Execute transaction block
+        let resp = self
+            .client
+            .read_api()
+            .dev_inspect_transaction_block(self.sender_address, tx_kind, None, None, None)
+            .await
+            .context("Failed to execute dev inspect transaction block")?;
+
+        // Extract transaction results
+        let DevInspectResults {
+            results, effects, ..
+        } = resp;
+
+        let results = results.ok_or_else(|| {
+            anyhow!(
+                "No results returned for balance check, effects: {:?}",
+                effects
+            )
+        })?;
+
+        let return_values = results
+            .first()
+            .ok_or_else(|| anyhow!("No return values found in transaction results"))?
+            .return_values
+            .first()
+            .ok_or_else(|| anyhow!("No return value found for balance check"))?;
+
+        let (value_bytes, _type_tag) = return_values;
+
+        // Decode balance value
+        let balance: u64 = bcs::from_bytes(value_bytes)
+            .context("Failed to decode balance from transaction response")?;
+
+        let adjusted_balance = balance / coin.scalar; // Adjust scaling factor
+
+        Ok((coin_type.to_string(), adjusted_balance))
+    }
 }

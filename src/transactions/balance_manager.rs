@@ -1,9 +1,18 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use sui_sdk::types::transaction::Transaction;
+use anyhow::{Ok, anyhow};
+use sui_sdk::SuiClient;
+use sui_sdk::rpc_types::{SuiObjectDataOptions, SuiObjectResponse};
+use sui_sdk::types::base_types::ObjectID;
+use sui_sdk::types::transaction::{Argument, Command, ProgrammableMoveCall, TransactionKind};
+use sui_sdk::types::{
+    programmable_transaction_builder::ProgrammableTransactionBuilder, transaction::Transaction,
+};
 
 use crate::utils::config::DeepBookConfig;
+use crate::utils::get_object_arg;
+use crate::utils::parse_type_input;
 
 #[derive(Debug, Clone)]
 pub struct BalanceManagerContract {
@@ -90,21 +99,31 @@ impl BalanceManagerContract {
     //     }
     // }
 
-    // pub fn check_manager_balance(
-    //     &self,
-    //     manager_key: &str,
-    //     coin_key: &str,
-    // ) -> impl Fn(&mut Transaction) {
-    //     let config = self.config.clone();
-    //     move |tx: &mut Transaction| {
-    //         let manager_id = config.get_balance_manager(manager_key).address.clone();
-    //         let coin = config.get_coin(coin_key);
-    //         tx.move_call(
-    //             format!("{}::balance_manager::balance", config.deepbook_package_id),
-    //             vec![tx.object(manager_id.clone())],
-    //         );
-    //     }
-    // }
+    pub async fn check_manager_balance(
+        &self,
+        client: &SuiClient,
+        manager_id: &str,
+        coin_type: &str,
+    ) -> Result<TransactionKind, anyhow::Error> {
+        let mut ptb = ProgrammableTransactionBuilder::new();
+
+        let type_argument = parse_type_input(coin_type).map_err(|e| anyhow!(e))?;
+        ptb.input(get_object_arg(&client, manager_id).await?)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+            module: "balance_manager".to_string(),
+            function: "balance".to_string(),
+            type_arguments: vec![type_argument],
+            arguments: vec![Argument::Input(0)],
+        })));
+
+        let builder = ptb.finish();
+
+        let kind = TransactionKind::programmable(builder);
+
+        Ok(kind)
+    }
 
     // pub fn generate_proof(&self, manager_key: &str) -> impl Fn(&mut Transaction) {
     //     let config = self.config.clone();

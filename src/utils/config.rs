@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::collections::HashMap;
 
+use sui_sdk::types::base_types::SuiAddress;
+
 use crate::transactions::balance_manager::BalanceManagerContract;
 use crate::types::{BalanceManager, Coin, Pool};
 
@@ -20,7 +22,7 @@ pub struct DeepBookConfig {
     coins: HashMap<String, Coin>,
     pools: HashMap<String, Pool>,
     balance_managers: HashMap<String, BalanceManager>,
-    address: String,
+    sender_address: SuiAddress,
 
     pub deepbook_package_id: String,
     pub registry_id: String,
@@ -32,13 +34,12 @@ pub struct DeepBookConfig {
 impl DeepBookConfig {
     pub fn new(
         env: &str,
-        address: String,
+        sender_address: SuiAddress,
         admin_cap: Option<String>,
         balance_managers: Option<HashMap<String, BalanceManager>>,
         coins: Option<HashMap<String, Coin>>,
         pools: Option<HashMap<String, Pool>>,
     ) -> Self {
-        let normalized_address = normalize_sui_address(address);
         let balance_managers = balance_managers.unwrap_or_else(HashMap::new);
 
         let (coins, pools, package_ids) = if env == "mainnet" {
@@ -79,7 +80,7 @@ impl DeepBookConfig {
             coins,
             pools,
             balance_managers,
-            address: normalized_address,
+            sender_address: sender_address,
             deepbook_package_id: package_ids.deepbook_package_id.clone().to_owned(),
             registry_id: package_ids.registry_id.clone().to_owned(),
             deep_treasury_id: package_ids.deep_treasury_id.clone().to_owned(),
