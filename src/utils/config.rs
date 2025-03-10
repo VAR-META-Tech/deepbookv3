@@ -22,7 +22,7 @@ pub struct DeepBookConfig {
     coins: HashMap<String, Coin>,
     pools: HashMap<String, Pool>,
     balance_managers: HashMap<String, BalanceManager>,
-    sender_address: SuiAddress,
+    pub sender_address: SuiAddress,
 
     pub deepbook_package_id: String,
     pub registry_id: String,

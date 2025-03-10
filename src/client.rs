@@ -6,13 +6,14 @@ use std::collections::HashMap;
 use sui_sdk::SuiClient;
 use sui_sdk::rpc_types::DevInspectResults;
 use sui_sdk::types::base_types::SuiAddress;
+use sui_sdk::types::transaction::TransactionKind;
 
 #[derive(Clone)]
 pub struct DeepBookClient {
     client: SuiClient,
     config: DeepBookConfig,
     sender_address: SuiAddress,
-    balance_manager: BalanceManagerContract,
+    pub balance_manager: BalanceManagerContract,
     // deep_book: DeepBookContract,
     // deep_book_admin: DeepBookAdminContract,
     // flash_loans: FlashLoanContract,
@@ -62,7 +63,7 @@ impl DeepBookClient {
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
         // Create transaction
-        let tx_kind = self
+        let pt = self
             .balance_manager
             .check_manager_balance(&self.client, manager_id, &coin_type)
             .await
@@ -72,7 +73,13 @@ impl DeepBookClient {
         let resp = self
             .client
             .read_api()
-            .dev_inspect_transaction_block(self.sender_address, tx_kind, None, None, None)
+            .dev_inspect_transaction_block(
+                self.sender_address,
+                TransactionKind::programmable(pt),
+                None,
+                None,
+                None,
+            )
             .await
             .context("Failed to execute dev inspect transaction block")?;
 

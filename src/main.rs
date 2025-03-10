@@ -29,6 +29,35 @@ use sui_sdk::{
     },
 };
 
+pub async fn get_coin_with_balance(
+    client: &SuiClient,
+    owner: SuiAddress,
+    coin_type: &str,
+    amount: u64,
+) -> Result<CallArg> {
+    let coins = client
+        .coin_read_api()
+        .get_coins(owner, Some(coin_type.to_string()), None, None)
+        .await
+        .map_err(|e| anyhow!("Failed to fetch coins for type {}: {}", coin_type, e))?
+        .data;
+
+    // Find a coin with at least the required balance
+    let coin = coins
+        .into_iter()
+        .find(|c| c.balance >= amount)
+        .ok_or(anyhow!("No suitable coin found for deposit"))?;
+    let coin_id = coin.coin_object_id;
+
+    let coin_object = CallArg::Object(ObjectArg::ImmOrOwnedObject((
+        coin_id,
+        coin.version,
+        coin.digest,
+    )));
+    print!("Coin object: {:?}", coin_object);
+    Ok(coin_object)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let client = SuiClientBuilder::default().build_testnet().await?;
@@ -45,7 +74,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )]);
 
     let deep_book_client = DeepBookClient::new(
-        client,
+        client.clone(),
         sender,
         "testnet",
         Some(balance_managers),
@@ -53,17 +82,43 @@ async fn main() -> Result<(), anyhow::Error> {
         None,
         None,
     );
+    let pt = deep_book_client
+        .balance_manager
+        .create_and_share_balance_manager()
+        .await?;
+    let coins = client
+        .coin_read_api()
+        .get_coins(sender, None, None, None)
+        .await?;
+    let coin = coins.data.into_iter().next().unwrap();
 
-    match deep_book_client
-        .check_manager_balance("MANAGER_2", "SUI")
-        .await
-    {
-        Ok((coin_type, balance)) => {
-            println!("Balance: {} {}", balance, coin_type);
-        }
-        Err(e) => {
-            eprintln!("Error checking balance: {:?}", e);
-        }
-    }
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    // create the transaction data that will be sent to the network
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![coin.object_ref()],
+        pt,
+        gas_budget,
+        gas_price,
+    );
+
+    // 4) sign transaction
+    let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
+    let signature = keystore.sign_secure(&sender, &tx_data, Intent::sui_transaction())?;
+
+    // 5) execute the transaction
+    print!("Executing the transaction...");
+    let transaction_response = client
+        .quorum_driver_api()
+        .execute_transaction_block(
+            Transaction::from_data(tx_data, vec![signature]),
+            SuiTransactionBlockResponseOptions::full_content(),
+            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+        )
+        .await?;
+    print!("done\n Transaction information: ");
+    println!("{:?}", transaction_response);
+
     Ok(())
 }
