@@ -103,7 +103,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let recipient = sender; // Self-withdrawal test
     let pt = deep_book_client
         .balance_manager
-        .withdraw_from_manager(&client, "MANAGER_2", "SUI", withdraw_amount, recipient)
+        .withdraw_all_from_manager(&client, "MANAGER_2", "SUI", recipient)
         .await?;
 
     // Step 2: Fetch a suitable gas coin

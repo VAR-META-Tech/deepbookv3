@@ -96,7 +96,55 @@ impl BalanceManagerContract {
         Ok(ptb.finish())
     }
 
-    //todo: Implement the deposit_into_manager function
+    pub async fn withdraw_all_from_manager(
+        &self,
+        client: &SuiClient,
+        manager_key: &str,
+        coin_key: &str,
+        recipient: SuiAddress,
+    ) -> Result<ProgrammableTransaction> {
+        let mut ptb = ProgrammableTransactionBuilder::new();
+
+        // ✅ Fetch Manager ID
+        let manager_id = self.config.get_balance_manager(manager_key).address;
+
+        // ✅ Fetch Coin Type
+        let coin = self.config.get_coin(coin_key);
+
+        // ✅ Convert Manager ID to ObjectRef
+        let manager_object = get_object_arg(client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        // ✅ Insert Manager Object into Transaction
+        let manager_arg = ptb.input(manager_object)?;
+
+        // ✅ Convert DeepBook package ID to ObjectID
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        // ✅ Parse Coin Type
+        let type_argument = parse_type_input(&coin.coin_type)?;
+
+        // ✅ Call Move Function `balance_manager::withdraw_all`
+        let withdrawal_coin = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "withdraw_all".to_string(),
+            type_arguments: vec![type_argument],
+            arguments: vec![manager_arg],
+        })));
+
+        // ✅ Transfer Withdrawn Coin to Recipient
+        let recipient_arg = ptb.pure(recipient)?;
+        ptb.command(Command::TransferObjects(
+            vec![withdrawal_coin],
+            recipient_arg,
+        ));
+
+        // ✅ Finalize Transaction
+        Ok(ptb.finish())
+    }
+
     pub async fn deposit_into_manager(
         &self,
         client: &SuiClient,
