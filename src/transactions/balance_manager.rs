@@ -15,7 +15,7 @@ use sui_sdk::types::{
 
 use crate::utils::config::DeepBookConfig;
 use crate::utils::get_object_arg;
-use crate::utils::parse_type_input;
+use crate::utils::{get_exact_coin, parse_type_input};
 
 #[derive(Debug, Clone)]
 pub struct BalanceManagerContract {
@@ -32,10 +32,8 @@ impl BalanceManagerContract {
     ) -> Result<ProgrammableTransaction, anyhow::Error> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
-        // Convert deepbook package ID to ObjectID
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
-        // Step 1: Create a new BalanceManager
         let manager = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
             module: "balance_manager".to_string(),
@@ -44,7 +42,6 @@ impl BalanceManagerContract {
             arguments: vec![],
         })));
 
-        // Step 2: Share the BalanceManager object publicly
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: ObjectID::from_hex_literal("0x2")?, // Sui Framework
             module: "transfer".to_string(),
@@ -56,10 +53,50 @@ impl BalanceManagerContract {
             arguments: vec![manager],
         })));
 
-        // Finalize transaction
         Ok(ptb.finish())
     }
 
+    pub async fn withdraw_from_manager(
+        &self,
+        client: &SuiClient,
+        manager_key: &str,
+        coin_key: &str,
+        amount_to_withdraw: f64,
+        recipient: SuiAddress,
+    ) -> Result<ProgrammableTransaction> {
+        let mut ptb = ProgrammableTransactionBuilder::new();
+
+        let manager_id = self.config.get_balance_manager(manager_key).address;
+
+        let coin = self.config.get_coin(coin_key);
+        let withdraw_input = (amount_to_withdraw * coin.scalar as f64) as u64;
+        let manager_object = get_object_arg(client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        let manager_arg = ptb.input(manager_object)?;
+
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let type_argument = parse_type_input(&coin.coin_type)?;
+
+        let withdraw_arg = ptb.pure(withdraw_input)?;
+
+        let coin_object = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "withdraw".to_string(),
+            type_arguments: vec![type_argument],
+            arguments: vec![manager_arg, withdraw_arg],
+        })));
+
+        let recipient_arg = ptb.pure(recipient)?;
+        ptb.command(Command::TransferObjects(vec![coin_object], recipient_arg));
+
+        Ok(ptb.finish())
+    }
+
+    //todo: Implement the deposit_into_manager function
     pub async fn deposit_into_manager(
         &self,
         client: &SuiClient,
@@ -69,33 +106,38 @@ impl BalanceManagerContract {
     ) -> Result<ProgrammableTransaction> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
-        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)
-            .context("Invalid package ID format")?;
-
+        // Fetch manager ID and coin details
         let manager_id = self.config.get_balance_manager(manager_key).address;
-
-        let manager_object = get_object_arg(client, manager_id)
-            .await
-            .context("Failed to get object argument for manager_id")?;
-
         let coin = self.config.get_coin(coin_key);
 
+        // Convert deposit amount to correct precision
         let deposit_input = (amount_to_deposit * coin.scalar as f64) as u64;
 
-        let coin_object = get_coin_with_balance(
+        // Get an exact coin object for deposit
+        let coin_arg = get_exact_coin(
             client,
             self.config.sender_address,
-            coin.coin_type,
-            deposit_input as u64,
+            &coin.coin_type,
+            deposit_input,
+            &mut ptb,
         )
         .await?;
 
-        let type_argument = parse_type_input(&coin.coin_type)
-            .context("Failed to parse type input for coin_type")?;
+        // Get manager object
+        let manager_object = get_object_arg(client, &manager_id)
+            .await
+            .context("Failed to get object argument for manager")?;
 
+        // Convert deepbook package ID to ObjectID
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)
+            .context("Invalid package ID format")?;
+
+        // Parse coin type
+        let type_argument = parse_type_input(&coin.coin_type)
+            .context("Failed to parse type input for coin type")?;
+
+        // Insert inputs into transaction
         let manager_arg = ptb.input(manager_object)?;
-        let coin_arg = ptb.input(coin_object)?;
-        // let deposit_arg = ptb.input(deposit_input)?;
 
         // Create Move Call
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -107,9 +149,7 @@ impl BalanceManagerContract {
         })));
 
         // Finalize transaction
-        let builder = ptb.finish();
-
-        Ok(builder)
+        Ok(ptb.finish())
     }
 
     pub async fn check_manager_balance(
@@ -120,23 +160,18 @@ impl BalanceManagerContract {
     ) -> Result<ProgrammableTransaction, anyhow::Error> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
-        // Parse the type argument safely
         let type_argument =
             parse_type_input(coin_type).context("Failed to parse type input for coin_type")?;
 
-        // Fetch the object argument for the manager
         let manager_object = get_object_arg(client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
-        // Insert manager object into the transaction builder
         let manager_arg = ptb.input(manager_object)?;
 
-        // Convert deepbook package ID to ObjectID
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)
             .context("Invalid package ID format")?;
 
-        // Construct the Move call command
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
             module: "balance_manager".to_string(),
@@ -145,38 +180,8 @@ impl BalanceManagerContract {
             arguments: vec![manager_arg],
         })));
 
-        // Finalize transaction
         let builder = ptb.finish();
 
         Ok(builder)
     }
-}
-
-pub async fn get_coin_with_balance(
-    client: &SuiClient,
-    owner: SuiAddress,
-    coin_type: &str,
-    amount: u64,
-) -> Result<CallArg> {
-    let coins = client
-        .coin_read_api()
-        .get_coins(owner, Some(coin_type.to_string()), None, None)
-        .await
-        .map_err(|e| anyhow!("Failed to fetch coins for type {}: {}", coin_type, e))?
-        .data;
-
-    // Find a coin with at least the required balance
-    let coin = coins
-        .into_iter()
-        .find(|c| c.balance >= amount)
-        .ok_or(anyhow!("No suitable coin found for deposit"))?;
-    let coin_id = coin.coin_object_id;
-
-    let coin_object = CallArg::Object(ObjectArg::ImmOrOwnedObject((
-        coin_id,
-        coin.version,
-        coin.digest,
-    )));
-    print!("Coin object: {:?}", coin_object);
-    Ok(coin_object)
 }

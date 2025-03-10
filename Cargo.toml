@@ -11,3 +11,6 @@ shared-crypto = { git = "https://github.com/mystenlabs/sui", package = "shared-c
 tokio = { version = "1.2", features = ["full"] }
 anyhow = "1.0"
 bcs = "0.1.4"
+
+[dev-dependencies]
+serial_test = "0.9"

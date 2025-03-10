@@ -29,43 +29,12 @@ use sui_sdk::{
     },
 };
 
-pub async fn get_coin_with_balance(
-    client: &SuiClient,
-    owner: SuiAddress,
-    coin_type: &str,
-    amount: u64,
-) -> Result<CallArg> {
-    let coins = client
-        .coin_read_api()
-        .get_coins(owner, Some(coin_type.to_string()), None, None)
-        .await
-        .map_err(|e| anyhow!("Failed to fetch coins for type {}: {}", coin_type, e))?
-        .data;
-
-    // Find a coin with at least the required balance
-    let coin = coins
-        .into_iter()
-        .find(|c| c.balance >= amount)
-        .ok_or(anyhow!("No suitable coin found for deposit"))?;
-    let coin_id = coin.coin_object_id;
-
-    let coin_object = CallArg::Object(ObjectArg::ImmOrOwnedObject((
-        coin_id,
-        coin.version,
-        coin.digest,
-    )));
-    print!("Coin object: {:?}", coin_object);
-    Ok(coin_object)
-}
-
-#[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+pub async fn setup_client() -> Result<(SuiClient, SuiAddress, DeepBookClient)> {
     let client = SuiClientBuilder::default().build_testnet().await?;
-
     let sender =
         SuiAddress::from_str("0x38a27d258039c629219b3dbaaeb502381d26f9b93f985e2fec7d248db00d3cf1")?;
 
-    let balance_managers: HashMap<String, BalanceManager> = HashMap::from([(
+    let balance_managers = HashMap::from([(
         "MANAGER_2".to_string(),
         BalanceManager {
             address: "0x08933685e0246a2ddae2f5e5628fdeba09de831cadf5ad949db308807f18bee5",
@@ -82,33 +51,29 @@ async fn main() -> Result<(), anyhow::Error> {
         None,
         None,
     );
-    let pt = deep_book_client
-        .balance_manager
-        .create_and_share_balance_manager()
-        .await?;
+
+    Ok((client, sender, deep_book_client))
+}
+
+/// Retrieve a gas coin from the sender's account.
+pub async fn get_gas_coin(client: &SuiClient, sender: SuiAddress) -> Result<ObjectRef> {
     let coins = client
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let coin = coins.data.into_iter().next().unwrap();
+    let gas_coin = coins.data.into_iter().next().unwrap();
+    Ok(gas_coin.object_ref())
+}
 
-    let gas_budget = 5_000_000;
-    let gas_price = client.read_api().get_reference_gas_price().await?;
-    // create the transaction data that will be sent to the network
-    let tx_data = TransactionData::new_programmable(
-        sender,
-        vec![coin.object_ref()],
-        pt,
-        gas_budget,
-        gas_price,
-    );
-
-    // 4) sign transaction
+/// Sign and execute a transaction.
+pub async fn sign_and_execute(
+    client: &SuiClient,
+    sender: SuiAddress,
+    tx_data: TransactionData,
+) -> Result<()> {
     let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
     let signature = keystore.sign_secure(&sender, &tx_data, Intent::sui_transaction())?;
 
-    // 5) execute the transaction
-    print!("Executing the transaction...");
     let transaction_response = client
         .quorum_driver_api()
         .execute_transaction_block(
@@ -117,8 +82,42 @@ async fn main() -> Result<(), anyhow::Error> {
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
-    print!("done\n Transaction information: ");
-    println!("{:?}", transaction_response);
 
+    assert!(
+        transaction_response
+            .confirmed_local_execution
+            .unwrap_or(false),
+        "Transaction execution failed"
+    );
+
+    println!("Transaction Successful: {:?}", transaction_response);
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Step 1: Set up transaction for withdrawal
+    let withdraw_amount = 0.1;
+    let recipient = sender; // Self-withdrawal test
+    let pt = deep_book_client
+        .balance_manager
+        .withdraw_from_manager(&client, "MANAGER_2", "SUI", withdraw_amount, recipient)
+        .await?;
+
+    // Step 2: Fetch a suitable gas coin
+    let gas_coin = get_gas_coin(&client, sender).await?;
+
+    // Step 3: Set up gas and create transaction data
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
+
+    // Step 4: Sign and execute the transaction
+    sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("Withdrawal successful.");
     Ok(())
 }

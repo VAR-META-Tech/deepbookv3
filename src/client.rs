@@ -55,10 +55,10 @@ impl DeepBookClient {
         &self,
         manager_key: &str,
         coin_key: &str,
-    ) -> Result<(String, u64)> {
+    ) -> Result<(String, f64)> {
         // Fetch coin type and manager ID
         let coin = self.config.get_coin(coin_key);
-        let coin_type = coin.coin_type; // Clone to return as String
+        let coin_type = coin.coin_type.clone(); // Clone to return as String
 
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
@@ -108,7 +108,8 @@ impl DeepBookClient {
         let balance: u64 = bcs::from_bytes(value_bytes)
             .context("Failed to decode balance from transaction response")?;
 
-        let adjusted_balance = balance / coin.scalar; // Adjust scaling factor
+        // Convert balance to `f64` using the correct scaling factor
+        let adjusted_balance = balance as f64 / coin.scalar as f64;
 
         Ok((coin_type.to_string(), adjusted_balance))
     }
