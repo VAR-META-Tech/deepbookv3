@@ -98,26 +98,12 @@ pub async fn sign_and_execute(
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
-    // Step 1: Set up transaction for withdrawal
-    let withdraw_amount = 0.1;
-    let recipient = sender; // Self-withdrawal test
-    let pt = deep_book_client
-        .balance_manager
-        .withdraw_all_from_manager(&client, "MANAGER_2", "SUI", recipient)
-        .await?;
+    // Run check_manager_balance function
+    let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
+    println!("Balance Manager Owner: {:?}", owner);
 
-    // Step 2: Fetch a suitable gas coin
-    let gas_coin = get_gas_coin(&client, sender).await?;
+    let manager_id = deep_book_client.get_manager_id("MANAGER_2").await?;
+    println!("Balance Manager ID: {:?}", manager_id);
 
-    // Step 3: Set up gas and create transaction data
-    let gas_budget = 5_000_000;
-    let gas_price = client.read_api().get_reference_gas_price().await?;
-    let tx_data =
-        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
-
-    // Step 4: Sign and execute the transaction
-    sign_and_execute(&client, sender, tx_data).await?;
-
-    println!("Withdrawal successful.");
     Ok(())
 }

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use sui_sdk::SuiClient;
 use sui_sdk::rpc_types::DevInspectResults;
 use sui_sdk::types::base_types::SuiAddress;
+use sui_sdk::types::id::ID;
 use sui_sdk::types::transaction::TransactionKind;
 
 #[derive(Clone)]
@@ -60,12 +61,10 @@ impl DeepBookClient {
         let coin = self.config.get_coin(coin_key);
         let coin_type = coin.coin_type.clone(); // Clone to return as String
 
-        let manager_id = self.config.get_balance_manager(manager_key).address;
-
         // Create transaction
         let pt = self
             .balance_manager
-            .check_manager_balance(&self.client, manager_id, &coin_type)
+            .check_manager_balance(&self.client, manager_key, &coin_key)
             .await
             .context("Failed to create balance check transaction")?;
 
@@ -112,5 +111,91 @@ impl DeepBookClient {
         let adjusted_balance = balance as f64 / coin.scalar as f64;
 
         Ok((coin_type.to_string(), adjusted_balance))
+    }
+
+    pub async fn get_manager_owner(&self, manager_key: &str) -> Result<SuiAddress> {
+        let pt = self
+            .balance_manager
+            .get_manager_owner(&self.client, manager_key)
+            .await
+            .context("Failed to create owner retrieval transaction")?;
+
+        let resp = self
+            .client
+            .read_api()
+            .dev_inspect_transaction_block(
+                self.sender_address,
+                TransactionKind::programmable(pt),
+                None,
+                None,
+                None,
+            )
+            .await
+            .context("Failed to execute dev inspect transaction block")?;
+
+        let DevInspectResults {
+            results, effects, ..
+        } = resp;
+
+        let results = results.ok_or_else(|| {
+            anyhow!(
+                "No results returned for owner check, effects: {:?}",
+                effects
+            )
+        })?;
+
+        let return_values = results
+            .first()
+            .ok_or_else(|| anyhow!("No return values found in transaction results"))?
+            .return_values
+            .first()
+            .ok_or_else(|| anyhow!("No return value found for manager owner check"))?;
+
+        let (value_bytes, _type_tag) = return_values;
+        let owner: SuiAddress = bcs::from_bytes(value_bytes)
+            .context("Failed to decode owner address from transaction response")?;
+        Ok(owner)
+    }
+
+    /// ✅ **Get Manager ID**
+    pub async fn get_manager_id(&self, manager_key: &str) -> Result<ID> {
+        let pt = self
+            .balance_manager
+            .get_manager_id(&self.client, manager_key)
+            .await
+            .context("Failed to create ID retrieval transaction")?;
+
+        let resp = self
+            .client
+            .read_api()
+            .dev_inspect_transaction_block(
+                self.sender_address,
+                TransactionKind::programmable(pt),
+                None,
+                None,
+                None,
+            )
+            .await
+            .context("Failed to execute dev inspect transaction block")?;
+
+        let DevInspectResults {
+            results, effects, ..
+        } = resp;
+
+        let results = results
+            .ok_or_else(|| anyhow!("No results returned for ID check, effects: {:?}", effects))?;
+
+        let return_values = results
+            .first()
+            .ok_or_else(|| anyhow!("No return values found in transaction results"))?
+            .return_values
+            .first()
+            .ok_or_else(|| anyhow!("No return value found for manager ID check"))?;
+
+        let (value_bytes, _type_tag) = return_values;
+        let manager_id: ID = bcs::from_bytes(value_bytes)
+            .context("Failed to decode manager ID from transaction response")?;
+
+        Ok(manager_id)
     }
 }

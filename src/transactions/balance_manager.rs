@@ -203,10 +203,13 @@ impl BalanceManagerContract {
     pub async fn check_manager_balance(
         &self,
         client: &SuiClient,
-        manager_id: &str,
-        coin_type: &str,
+        manager_key: &str,
+        coin_key: &str,
     ) -> Result<ProgrammableTransaction, anyhow::Error> {
         let mut ptb = ProgrammableTransactionBuilder::new();
+
+        let manager_id = self.config.get_balance_manager(manager_key).address;
+        let coin_type = self.config.get_coin(coin_key).coin_type;
 
         let type_argument =
             parse_type_input(coin_type).context("Failed to parse type input for coin_type")?;
@@ -231,5 +234,73 @@ impl BalanceManagerContract {
         let builder = ptb.finish();
 
         Ok(builder)
+    }
+
+    pub async fn get_manager_owner(
+        &self,
+        client: &SuiClient,
+        manager_key: &str,
+    ) -> Result<ProgrammableTransaction> {
+        let mut ptb = ProgrammableTransactionBuilder::new();
+
+        // ✅ Fetch Manager ID
+        let manager_id = self.config.get_balance_manager(manager_key).address;
+
+        // ✅ Convert Manager ID to ObjectRef
+        let manager_object = get_object_arg(client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        // ✅ Insert Manager Object into Transaction
+        let manager_arg = ptb.input(manager_object)?;
+
+        // ✅ Convert DeepBook package ID to ObjectID
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        // ✅ Call Move Function `balance_manager::owner`
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "owner".to_string(),
+            type_arguments: vec![],
+            arguments: vec![manager_arg],
+        })));
+
+        // ✅ Finalize Transaction
+        Ok(ptb.finish())
+    }
+
+    pub async fn get_manager_id(
+        &self,
+        client: &SuiClient,
+        manager_key: &str,
+    ) -> Result<ProgrammableTransaction> {
+        let mut ptb = ProgrammableTransactionBuilder::new();
+
+        // ✅ Fetch Manager ID
+        let manager_id = self.config.get_balance_manager(manager_key).address;
+
+        // ✅ Convert Manager ID to ObjectRef
+        let manager_object = get_object_arg(client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        // ✅ Insert Manager Object into Transaction
+        let manager_arg = ptb.input(manager_object)?;
+
+        // ✅ Convert DeepBook package ID to ObjectID
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        // ✅ Call Move Function `balance_manager::id`
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "id".to_string(),
+            type_arguments: vec![],
+            arguments: vec![manager_arg],
+        })));
+
+        // ✅ Finalize Transaction
+        Ok(ptb.finish())
     }
 }

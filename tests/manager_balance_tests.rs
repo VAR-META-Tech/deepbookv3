@@ -117,3 +117,39 @@ async fn test_withdraw_all_from_manager() -> Result<()> {
     println!("Withdrawal successful.");
     Ok(())
 }
+
+#[tokio::test]
+#[serial]
+async fn test_get_manager_owner() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Act: Retrieve the owner of the balance manager
+    let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
+
+    // Assert: Owner should be the sender (assuming sender owns the manager)
+    println!("Balance Manager Owner: {:?}", owner);
+    assert_eq!(
+        owner, sender,
+        "The manager owner should match the sender address."
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_get_manager_id() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Act: Retrieve the manager ID
+    let manager_id = deep_book_client.get_manager_id("MANAGER_2").await?;
+
+    // Assert: Manager ID should not be empty
+    println!("Balance Manager ID: {:?}", manager_id);
+    assert!(
+        !format!("{:?}", manager_id).is_empty(),
+        "The manager ID should not be empty."
+    );
+
+    Ok(())
+}

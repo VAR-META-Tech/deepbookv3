@@ -30,8 +30,6 @@ pub async fn get_object_arg(client: &SuiClient, object_id: &str) -> Result<CallA
         .get_object_with_options(object_id, SuiObjectDataOptions::full_content())
         .await?;
 
-    println!("{:?}", object_response);
-
     // Extract object data
     let object_data = object_response.data.as_ref().ok_or_else(|| {
         Error::msg(format!(
