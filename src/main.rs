@@ -94,43 +94,15 @@ pub async fn sign_and_execute(
     Ok(())
 }
 
-// #[tokio::main]
-// async fn main() -> Result<(), anyhow::Error> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
-//     // Run check_manager_balance function
-//     let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
-//     println!("Balance Manager Owner: {:?}", owner);
-
-//     let manager_id = deep_book_client.get_manager_id("MANAGER_2").await?;
-//     println!("Balance Manager ID: {:?}", manager_id);
-
-//     Ok(())
-// }
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
-    let mut ptb = ProgrammableTransactionBuilder::new();
+    // Run check_manager_balance function
+    let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
+    println!("Balance Manager Owner: {:?}", owner);
 
-    let (coin, flash_loan) = deep_book_client
-        .flash_loans
-        .borrow_base_asset(&client, "DEEP_SUI", 123.321f64, &mut ptb)
-        .await?;
-    let coin_remain = deep_book_client
-        .flash_loans
-        .return_flashloan_base(&client, "DEEP_SUI", 123.321f64, coin, flash_loan, &mut ptb)
-        .await?;
+    let manager_id = deep_book_client.get_manager_id("MANAGER_2").await?;
+    println!("Balance Manager ID: {:?}", manager_id);
 
-    let recipient_arg = ptb.pure(sender)?;
-    ptb.command(Command::TransferObjects(vec![coin_remain], recipient_arg));
-    let pt = ptb.finish();
-    let gas_coin = get_gas_coin(&client, sender).await?;
-
-    let gas_budget = 5_000_000;
-    let gas_price = client.read_api().get_reference_gas_price().await?;
-
-    let tx_data =
-        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
-    sign_and_execute(&client, sender, tx_data).await?;
     Ok(())
 }
