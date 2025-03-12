@@ -1,4 +1,5 @@
 use crate::transactions::balance_manager::BalanceManagerContract;
+use crate::transactions::flash_loans::FlashLoanContract;
 use crate::types::{BalanceManager, Coin, Pool};
 use crate::utils::config::DeepBookConfig;
 use anyhow::{Context, Result, anyhow};
@@ -17,7 +18,7 @@ pub struct DeepBookClient {
     pub balance_manager: BalanceManagerContract,
     // deep_book: DeepBookContract,
     // deep_book_admin: DeepBookAdminContract,
-    // flash_loans: FlashLoanContract,
+    pub flash_loans: FlashLoanContract,
     // governance: GovernanceContract,
 }
 
@@ -44,10 +45,10 @@ impl DeepBookClient {
             client,
             config: config.clone(),
             sender_address,
-            balance_manager: BalanceManagerContract::new(config),
+            balance_manager: BalanceManagerContract::new(config.clone()),
             // deep_book: DeepBookContract::new(config.clone()),
             // deep_book_admin: DeepBookAdminContract::new(config.clone()),
-            // flash_loans: FlashLoanContract::new(config.clone()),
+            flash_loans: FlashLoanContract::new(config.clone()),
             // governance: GovernanceContract::new(config.clone()),
         }
     }

@@ -97,7 +97,6 @@ pub async fn sign_and_execute(
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
-
     // Run check_manager_balance function
     let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
     println!("Balance Manager Owner: {:?}", owner);
