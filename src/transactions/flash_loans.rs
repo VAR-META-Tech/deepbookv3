@@ -80,7 +80,7 @@ impl FlashLoanContract {
         coin: Argument,
         flash_loan: Argument,
         ptb: &mut ProgrammableTransactionBuilder,
-    ) -> Result<(Argument), anyhow::Error> {
+    ) -> Result<Argument, anyhow::Error> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let pools = self.config.get_pool(pool_key);
@@ -123,7 +123,7 @@ impl FlashLoanContract {
             arguments: vec![pool_arg, split_borrow_amount_argument, flash_loan],
         })));
 
-        Ok((coin))
+        Ok(coin)
     }
 
     pub async fn borrow_quote_asset(
@@ -185,7 +185,7 @@ impl FlashLoanContract {
         coin: Argument,
         flash_loan: Argument,
         ptb: &mut ProgrammableTransactionBuilder,
-    ) -> Result<(Argument), anyhow::Error> {
+    ) -> Result<Argument, anyhow::Error> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let pools = self.config.get_pool(pool_key);
@@ -228,6 +228,6 @@ impl FlashLoanContract {
             arguments: vec![pool_arg, split_borrow_amount_argument, flash_loan],
         })));
 
-        Ok((coin))
+        Ok(coin)
     }
 }

@@ -1,4 +1,5 @@
 use crate::transactions::balance_manager::BalanceManagerContract;
+use crate::transactions::deep_book_admin::DeepBookAdminContract;
 use crate::transactions::flash_loans::FlashLoanContract;
 use crate::types::{BalanceManager, Coin, Pool};
 use crate::utils::config::DeepBookConfig;
@@ -17,7 +18,7 @@ pub struct DeepBookClient {
     sender_address: SuiAddress,
     pub balance_manager: BalanceManagerContract,
     // deep_book: DeepBookContract,
-    // deep_book_admin: DeepBookAdminContract,
+    pub deep_book_admin: DeepBookAdminContract,
     pub flash_loans: FlashLoanContract,
     // governance: GovernanceContract,
 }
@@ -42,12 +43,12 @@ impl DeepBookClient {
         );
 
         Self {
-            client,
+            client: client.clone(),
             config: config.clone(),
             sender_address,
-            balance_manager: BalanceManagerContract::new(config.clone()),
+            balance_manager: BalanceManagerContract::new(client.clone(), config.clone()),
             // deep_book: DeepBookContract::new(config.clone()),
-            // deep_book_admin: DeepBookAdminContract::new(config.clone()),
+            deep_book_admin: DeepBookAdminContract::new(client.clone(), config.clone()),
             flash_loans: FlashLoanContract::new(config.clone()),
             // governance: GovernanceContract::new(config.clone()),
         }
@@ -65,7 +66,7 @@ impl DeepBookClient {
         // Create transaction
         let pt = self
             .balance_manager
-            .check_manager_balance(&self.client, manager_key, &coin_key)
+            .check_manager_balance(manager_key, &coin_key)
             .await
             .context("Failed to create balance check transaction")?;
 
@@ -75,7 +76,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt),
+                TransactionKind::programmable(pt.finish()),
                 None,
                 None,
                 None,
@@ -117,7 +118,7 @@ impl DeepBookClient {
     pub async fn get_manager_owner(&self, manager_key: &str) -> Result<SuiAddress> {
         let pt = self
             .balance_manager
-            .get_manager_owner(&self.client, manager_key)
+            .get_manager_owner(manager_key)
             .await
             .context("Failed to create owner retrieval transaction")?;
 
@@ -126,7 +127,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt),
+                TransactionKind::programmable(pt.finish()),
                 None,
                 None,
                 None,
@@ -162,7 +163,7 @@ impl DeepBookClient {
     pub async fn get_manager_id(&self, manager_key: &str) -> Result<ID> {
         let pt = self
             .balance_manager
-            .get_manager_id(&self.client, manager_key)
+            .get_manager_id(manager_key)
             .await
             .context("Failed to create ID retrieval transaction")?;
 
@@ -171,7 +172,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt),
+                TransactionKind::programmable(pt.finish()),
                 None,
                 None,
                 None,

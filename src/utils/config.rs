@@ -12,10 +12,10 @@ use crate::utils::constants::{
     get_testnet_coins, get_testnet_pools,
 };
 
-pub const FLOAT_SCALAR: u64 = 1_000_000_000;
+pub const FLOAT_SCALAR: f64 = 1_000_000_000.0;
 pub const MAX_TIMESTAMP: u128 = 1_844_674_407_370_955_161;
 pub const GAS_BUDGET: f64 = 0.5 * 500_000_000.0; // Adjust based on benchmarking
-pub const DEEP_SCALAR: u64 = 1_000_000;
+pub const DEEP_SCALAR: f64 = 1_000_000.0;
 
 #[derive(Debug, Clone)]
 pub struct DeepBookConfig {

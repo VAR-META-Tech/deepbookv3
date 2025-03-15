@@ -17,19 +17,20 @@ use crate::utils::config::DeepBookConfig;
 use crate::utils::get_object_arg;
 use crate::utils::{get_exact_coin, parse_type_input};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct BalanceManagerContract {
+    client: SuiClient,
     config: DeepBookConfig,
 }
 
 impl BalanceManagerContract {
-    pub fn new(config: DeepBookConfig) -> Self {
-        Self { config }
+    pub fn new(client: SuiClient, config: DeepBookConfig) -> Self {
+        Self { client, config }
     }
 
     pub async fn create_and_share_balance_manager(
         &self,
-    ) -> Result<ProgrammableTransaction, anyhow::Error> {
+    ) -> Result<ProgrammableTransactionBuilder, anyhow::Error> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
@@ -53,24 +54,23 @@ impl BalanceManagerContract {
             arguments: vec![manager],
         })));
 
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 
     pub async fn withdraw_from_manager(
         &self,
-        client: &SuiClient,
         manager_key: &str,
         coin_key: &str,
         amount_to_withdraw: f64,
         recipient: SuiAddress,
-    ) -> Result<ProgrammableTransaction> {
+    ) -> Result<ProgrammableTransactionBuilder> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
         let coin = self.config.get_coin(coin_key);
         let withdraw_input = (amount_to_withdraw * coin.scalar as f64) as u64;
-        let manager_object = get_object_arg(client, manager_id)
+        let manager_object = get_object_arg(&self.client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
@@ -93,16 +93,15 @@ impl BalanceManagerContract {
         let recipient_arg = ptb.pure(recipient)?;
         ptb.command(Command::TransferObjects(vec![coin_object], recipient_arg));
 
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 
     pub async fn withdraw_all_from_manager(
         &self,
-        client: &SuiClient,
         manager_key: &str,
         coin_key: &str,
         recipient: SuiAddress,
-    ) -> Result<ProgrammableTransaction> {
+    ) -> Result<ProgrammableTransactionBuilder> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         // ✅ Fetch Manager ID
@@ -112,7 +111,7 @@ impl BalanceManagerContract {
         let coin = self.config.get_coin(coin_key);
 
         // ✅ Convert Manager ID to ObjectRef
-        let manager_object = get_object_arg(client, manager_id)
+        let manager_object = get_object_arg(&self.client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
@@ -142,16 +141,15 @@ impl BalanceManagerContract {
         ));
 
         // ✅ Finalize Transaction
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 
     pub async fn deposit_into_manager(
         &self,
-        client: &SuiClient,
         manager_key: &str,
         coin_key: &str,
         amount_to_deposit: f64,
-    ) -> Result<ProgrammableTransaction> {
+    ) -> Result<ProgrammableTransactionBuilder> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         // Fetch manager ID and coin details
@@ -163,7 +161,7 @@ impl BalanceManagerContract {
 
         // Get an exact coin object for deposit
         let coin_arg = get_exact_coin(
-            client,
+            &self.client,
             self.config.sender_address,
             &coin.coin_type,
             deposit_input,
@@ -172,7 +170,7 @@ impl BalanceManagerContract {
         .await?;
 
         // Get manager object
-        let manager_object = get_object_arg(client, &manager_id)
+        let manager_object = get_object_arg(&self.client, &manager_id)
             .await
             .context("Failed to get object argument for manager")?;
 
@@ -197,15 +195,14 @@ impl BalanceManagerContract {
         })));
 
         // Finalize transaction
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 
     pub async fn check_manager_balance(
         &self,
-        client: &SuiClient,
         manager_key: &str,
         coin_key: &str,
-    ) -> Result<ProgrammableTransaction, anyhow::Error> {
+    ) -> Result<ProgrammableTransactionBuilder, anyhow::Error> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         let manager_id = self.config.get_balance_manager(manager_key).address;
@@ -214,7 +211,7 @@ impl BalanceManagerContract {
         let type_argument =
             parse_type_input(coin_type).context("Failed to parse type input for coin_type")?;
 
-        let manager_object = get_object_arg(client, manager_id)
+        let manager_object = get_object_arg(&self.client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
@@ -231,23 +228,98 @@ impl BalanceManagerContract {
             arguments: vec![manager_arg],
         })));
 
-        let builder = ptb.finish();
+        Ok(ptb)
+    }
 
-        Ok(builder)
+    pub async fn generate_proof(
+        &self,
+        ptb: Option<&mut ProgrammableTransactionBuilder>,
+        manager_key: &str,
+    ) -> Result<Argument> {
+        let mut new_ptb = ProgrammableTransactionBuilder::new();
+        let mut ptb = ptb.unwrap_or(&mut new_ptb);
+
+        let balance_manager = self.config.get_balance_manager(manager_key);
+
+        // ✅ Determine which proof generation function to call
+        if let Some(trade_cap) = balance_manager.trade_cap {
+            Ok(self
+                .generate_proof_as_trader(&mut ptb, balance_manager.address, trade_cap)
+                .await?)
+        } else {
+            Ok(self
+                .generate_proof_as_owner(&mut ptb, balance_manager.address)
+                .await?)
+        }
+    }
+
+    /// Generate a trade proof as the owner
+    async fn generate_proof_as_owner(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_id: &str,
+    ) -> Result<Argument> {
+        let manager_object = get_object_arg(&self.client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let manager_input = ptb.input(manager_object)?;
+
+        Ok(
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: package_id,
+                module: "balance_manager".to_string(),
+                function: "generate_proof_as_owner".to_string(),
+                type_arguments: vec![],
+                arguments: vec![manager_input],
+            }))),
+        )
+    }
+
+    /// Generate a trade proof as a trader
+    async fn generate_proof_as_trader(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_id: &str,
+        trade_cap_id: &str,
+    ) -> Result<Argument> {
+        let manager_object = get_object_arg(&self.client, manager_id)
+            .await
+            .context("Failed to get object argument for manager_id")?;
+
+        let trade_cap_object = get_object_arg(&self.client, trade_cap_id)
+            .await
+            .context("Failed to get object argument for trade_cap_id")?;
+
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+        let manager_input = ptb.input(manager_object)?;
+        let trade_cap_input = ptb.input(trade_cap_object)?;
+
+        Ok(
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: package_id,
+                module: "balance_manager".to_string(),
+                function: "generate_proof_as_trader".to_string(),
+                type_arguments: vec![],
+
+                arguments: vec![manager_input, trade_cap_input],
+            }))),
+        )
     }
 
     pub async fn get_manager_owner(
         &self,
-        client: &SuiClient,
         manager_key: &str,
-    ) -> Result<ProgrammableTransaction> {
+    ) -> Result<ProgrammableTransactionBuilder> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         // ✅ Fetch Manager ID
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
         // ✅ Convert Manager ID to ObjectRef
-        let manager_object = get_object_arg(client, manager_id)
+        let manager_object = get_object_arg(&self.client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
@@ -267,21 +339,20 @@ impl BalanceManagerContract {
         })));
 
         // ✅ Finalize Transaction
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 
     pub async fn get_manager_id(
         &self,
-        client: &SuiClient,
         manager_key: &str,
-    ) -> Result<ProgrammableTransaction> {
+    ) -> Result<ProgrammableTransactionBuilder> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         // ✅ Fetch Manager ID
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
         // ✅ Convert Manager ID to ObjectRef
-        let manager_object = get_object_arg(client, manager_id)
+        let manager_object = get_object_arg(&self.client, manager_id)
             .await
             .context("Failed to get object argument for manager_id")?;
 
@@ -301,6 +372,6 @@ impl BalanceManagerContract {
         })));
 
         // ✅ Finalize Transaction
-        Ok(ptb.finish())
+        Ok(ptb)
     }
 }
