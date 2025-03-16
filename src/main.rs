@@ -97,14 +97,28 @@ pub async fn sign_and_execute(
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
-    // Run check_manager_balance function
-    let data = deep_book_client
-        .get_pool_id_by_assets(
-            "0x36dbef866a1d62bf7328989a10fb2f07d769f4ee587c0de4a0a256e57e0a58a8::deep::DEEP",
-            "0x2::sui::SUI",
-        )
-        .await?;
-    println!("data: {:?}", data);
 
+    // Define pool key and tick distance
+    let pool_key = "SUI_DBUSDC";
+    let tick_from_mid = 10;
+
+    // Act: Fetch level 2 order book ticks
+    let (bid_prices, bid_sizes, ask_prices, ask_sizes) = deep_book_client
+        .get_level2_ticks_from_mid(pool_key, tick_from_mid)
+        .await?;
+
+    // Debugging Output
+    println!("Bid Prices: {:?}", bid_prices);
+    println!("Bid Sizes: {:?}", bid_sizes);
+    println!("Ask Prices: {:?}", ask_prices);
+    println!("Ask Sizes: {:?}", ask_sizes);
+
+    // ✅ Check at least some order book data is present (not empty)
+    assert!(
+        !bid_prices.is_empty() || !ask_prices.is_empty(),
+        "Either bid or ask prices should contain data"
+    );
+
+    println!("✅ Test passed: get_level2_ticks_from_mid returns valid data.");
     Ok(())
 }
