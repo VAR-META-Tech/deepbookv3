@@ -1530,6 +1530,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bcs",
+ "serde",
+ "serde_derive",
  "serial_test",
  "shared-crypto",
  "sui-config",

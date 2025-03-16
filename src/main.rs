@@ -98,11 +98,13 @@ pub async fn sign_and_execute(
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
     // Run check_manager_balance function
-    let owner = deep_book_client.get_manager_owner("MANAGER_2").await?;
-    println!("Balance Manager Owner: {:?}", owner);
-
-    let manager_id = deep_book_client.get_manager_id("MANAGER_2").await?;
-    println!("Balance Manager ID: {:?}", manager_id);
+    let data = deep_book_client
+        .get_pool_id_by_assets(
+            "0x36dbef866a1d62bf7328989a10fb2f07d769f4ee587c0de4a0a256e57e0a58a8::deep::DEEP",
+            "0x2::sui::SUI",
+        )
+        .await?;
+    println!("data: {:?}", data);
 
     Ok(())
 }

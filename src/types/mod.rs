@@ -1,3 +1,6 @@
+use serde::Deserialize;
+use sui_sdk::types::{collection_types::VecSet, id::ID};
+
 #[derive(Debug, Clone)]
 pub struct BalanceManager {
     pub address: &'static str,
@@ -106,4 +109,33 @@ pub struct Config {
 pub enum Environment {
     Mainnet,
     Testnet,
+}
+
+/// Represents an account in the DeepBook system
+#[derive(Debug, Clone, Deserialize)]
+pub struct Account {
+    pub epoch: u64,
+    pub open_orders: VecSet<u128>,
+    pub taker_volume: u128,
+    pub maker_volume: u128,
+    pub active_stake: u64,
+    pub inactive_stake: u64,
+    pub created_proposal: bool,
+    pub voted_proposal: Option<ID>,
+    pub unclaimed_rebates: Balances,
+    pub settled_balances: Balances,
+    pub owed_balances: Balances,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Balances {
+    pub base: u64,
+    pub quote: u64,
+    pub deep: u64,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct OrderDeepPrice {
+    pub asset_is_base: bool,
+    pub deep_per_asset: u64,
 }
