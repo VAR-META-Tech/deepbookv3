@@ -42,7 +42,7 @@ impl GovernanceContract {
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(Some(&mut ptb), balance_manager_key)
+            .generate_proof(&mut ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -87,7 +87,7 @@ impl GovernanceContract {
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(Some(&mut ptb), balance_manager_key)
+            .generate_proof(&mut ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -130,7 +130,7 @@ impl GovernanceContract {
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(Some(&mut ptb), balance_manager_key)
+            .generate_proof(&mut ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -184,7 +184,7 @@ impl GovernanceContract {
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(Some(&mut ptb), balance_manager_key)
+            .generate_proof(&mut ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);

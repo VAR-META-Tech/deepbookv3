@@ -233,22 +233,19 @@ impl BalanceManagerContract {
 
     pub async fn generate_proof(
         &self,
-        ptb: Option<&mut ProgrammableTransactionBuilder>,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
     ) -> Result<Argument> {
-        let mut new_ptb = ProgrammableTransactionBuilder::new();
-        let mut ptb = ptb.unwrap_or(&mut new_ptb);
-
         let balance_manager = self.config.get_balance_manager(manager_key);
 
         // ✅ Determine which proof generation function to call
         if let Some(trade_cap) = balance_manager.trade_cap {
             Ok(self
-                .generate_proof_as_trader(&mut ptb, balance_manager.address, trade_cap)
+                .generate_proof_as_trader(ptb, balance_manager.address, trade_cap)
                 .await?)
         } else {
             Ok(self
-                .generate_proof_as_owner(&mut ptb, balance_manager.address)
+                .generate_proof_as_owner(ptb, balance_manager.address)
                 .await?)
         }
     }

@@ -13,7 +13,7 @@ use crate::utils::constants::{
 };
 
 pub const FLOAT_SCALAR: f64 = 1_000_000_000.0;
-pub const MAX_TIMESTAMP: u128 = 1_844_674_407_370_955_161;
+pub const MAX_TIMESTAMP: u64 = 1_844_674_407_370_955_161;
 pub const GAS_BUDGET: f64 = 0.5 * 500_000_000.0; // Adjust based on benchmarking
 pub const DEEP_SCALAR: f64 = 1_000_000.0;
 

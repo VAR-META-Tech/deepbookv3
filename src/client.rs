@@ -1,6 +1,8 @@
-use crate::transactions::balance_manager::BalanceManagerContract;
+use crate::transactions::balance_manager::{self, BalanceManagerContract};
+use crate::transactions::deep_book::DeepBookContract;
 use crate::transactions::deep_book_admin::DeepBookAdminContract;
 use crate::transactions::flash_loans::FlashLoanContract;
+use crate::transactions::governance::GovernanceContract;
 use crate::types::{BalanceManager, Coin, Pool};
 use crate::utils::config::DeepBookConfig;
 use anyhow::{Context, Result, anyhow};
@@ -10,17 +12,16 @@ use sui_sdk::rpc_types::DevInspectResults;
 use sui_sdk::types::base_types::SuiAddress;
 use sui_sdk::types::id::ID;
 use sui_sdk::types::transaction::TransactionKind;
-
 #[derive(Clone)]
 pub struct DeepBookClient {
     client: SuiClient,
     config: DeepBookConfig,
     sender_address: SuiAddress,
     pub balance_manager: BalanceManagerContract,
-    // deep_book: DeepBookContract,
+    pub deep_book: DeepBookContract,
     pub deep_book_admin: DeepBookAdminContract,
     pub flash_loans: FlashLoanContract,
-    // governance: GovernanceContract,
+    pub governance: GovernanceContract,
 }
 
 impl DeepBookClient {
@@ -41,16 +42,23 @@ impl DeepBookClient {
             coins,
             pools,
         );
-
         Self {
             client: client.clone(),
             config: config.clone(),
             sender_address,
             balance_manager: BalanceManagerContract::new(client.clone(), config.clone()),
-            // deep_book: DeepBookContract::new(config.clone()),
+            deep_book: DeepBookContract::new(
+                client.clone(),
+                config.clone(),
+                BalanceManagerContract::new(client.clone(), config.clone()),
+            ),
             deep_book_admin: DeepBookAdminContract::new(client.clone(), config.clone()),
             flash_loans: FlashLoanContract::new(config.clone()),
-            // governance: GovernanceContract::new(config.clone()),
+            governance: GovernanceContract::new(
+                client.clone(),
+                config.clone(),
+                BalanceManagerContract::new(client.clone(), config.clone()),
+            ),
         }
     }
 

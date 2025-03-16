@@ -181,7 +181,7 @@ async fn test_generate_trade_proof() -> Result<()> {
     // Step 1: Set up trade proof transaction
     let pt = deep_book_client
         .balance_manager
-        .generate_proof(Some(&mut ptb), "MANAGER_2")
+        .generate_proof(&mut ptb, "MANAGER_2")
         .await?;
 
     // Step 2: Fetch a suitable gas coin
