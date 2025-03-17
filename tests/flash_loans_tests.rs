@@ -23,7 +23,7 @@ async fn test_flash_loans_base_workflow() -> Result<(), anyhow::Error> {
     println!("Borrowing {} from DEEP_SUI pool...", loan_amount);
     let (coin, flash_loan) = deep_book_client
         .flash_loans
-        .borrow_base_asset(&client, "DEEP_SUI", loan_amount, &mut ptb)
+        .borrow_base_asset("DEEP_SUI", loan_amount, &mut ptb)
         .await?;
 
     //implement logic arbitrage here
@@ -32,7 +32,7 @@ async fn test_flash_loans_base_workflow() -> Result<(), anyhow::Error> {
     println!("Returning flash loan...");
     let coin_remain = deep_book_client
         .flash_loans
-        .return_flashloan_base(&client, "DEEP_SUI", loan_amount, coin, flash_loan, &mut ptb)
+        .return_flashloan_base("DEEP_SUI", loan_amount, coin, flash_loan, &mut ptb)
         .await?;
 
     // Step 4: Transfer any remaining funds back to sender
@@ -77,7 +77,7 @@ async fn test_flash_loans_quote_workflow() -> Result<(), anyhow::Error> {
     println!("Borrowing {} from DEEP_SUI pool...", loan_amount);
     let (coin, flash_loan) = deep_book_client
         .flash_loans
-        .borrow_quote_asset(&client, "DEEP_SUI", loan_amount, &mut ptb)
+        .borrow_quote_asset("DEEP_SUI", loan_amount, &mut ptb)
         .await?;
 
     //implement logic arbitrage here
@@ -86,7 +86,7 @@ async fn test_flash_loans_quote_workflow() -> Result<(), anyhow::Error> {
     println!("Returning flash loan...");
     let coin_remain = deep_book_client
         .flash_loans
-        .return_flashloan_quote(&client, "DEEP_SUI", loan_amount, coin, flash_loan, &mut ptb)
+        .return_flashloan_quote("DEEP_SUI", loan_amount, coin, flash_loan, &mut ptb)
         .await?;
 
     // Step 4: Transfer any remaining funds back to sender

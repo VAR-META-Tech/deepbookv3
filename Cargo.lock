@@ -1537,6 +1537,7 @@ dependencies = [
  "sui-config",
  "sui-keys",
  "sui-sdk",
+ "sui-types",
  "tokio",
 ]
 

@@ -1,13 +1,180 @@
 mod test_helper;
 
 use anyhow::Result;
+use deepbookv3::types::{
+    OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions,
+};
 use serial_test::serial;
 use sui_sdk::types::{
-    collection_types::VecSet, programmable_transaction_builder::ProgrammableTransactionBuilder,
-    transaction::TransactionData,
+    collection_types::VecSet,
+    programmable_transaction_builder::ProgrammableTransactionBuilder,
+    transaction::{Command, TransactionData},
 };
 use test_helper::{get_gas_coin, setup_client, sign_and_execute};
 use tokio::time::{Duration, sleep}; // Ensure `tokio` is used for async tests
+
+#[tokio::test]
+#[serial]
+async fn test_place_limit_order() -> Result<()> {
+    println!("Placing limit order...");
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Step 1: Set up transaction for place_limit_order
+    let params = PlaceLimitOrderParams {
+        pool_key: "DEEP_SUI".to_string(),
+        balance_manager_key: "MANAGER_2".to_string(),
+        client_order_id: "123123".to_string(),
+        price: 0.01,
+        quantity: 15.0,
+        is_bid: true,
+        expiration: None,
+        order_type: Some(OrderType::NoRestriction),
+        self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
+        pay_with_deep: Some(true),
+    };
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book
+        .place_limit_order(&params, &mut ptb)
+        .await?;
+
+    let pt = ptb.finish();
+    // Step 2: Fetch a suitable gas coin
+    let gas_coin = get_gas_coin(&client, sender).await?;
+
+    // Step 3: Set up gas and create transaction data
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
+
+    // Step 4: Sign and execute the transaction
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("Transaction response: {:?}", transaction_response);
+
+    // assert!(
+    //     transaction_response.digest.is_some(),
+    //     "Transaction digest should not be empty"
+    // );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_place_market_order() -> Result<()> {
+    println!("Placing market order...");
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Step 1: Set up transaction for place_market_order
+    let params = PlaceMarketOrderParams {
+        pool_key: "DEEP_SUI".to_string(),
+        balance_manager_key: "MANAGER_2".to_string(),
+        client_order_id: "123123".to_string(),
+        quantity: 15f64,
+        is_bid: true,
+        self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
+        pay_with_deep: Some(true),
+    };
+    let mut ptb = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
+        .deep_book
+        .place_market_order(&params, &mut ptb)
+        .await?;
+
+    let pt = ptb.finish();
+
+    // Step 2: Fetch a suitable gas coin
+    let gas_coin = get_gas_coin(&client, sender).await?;
+
+    // Step 3: Set up gas and create transaction data
+    let gas_budget = 20_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
+
+    // Step 4: Sign and execute the transaction
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("Transaction response: {:?}", transaction_response);
+
+    // assert!(
+    //     transaction_response.digest.is_some(),
+    //     "Transaction digest should not be empty"
+    // );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_cancel_order() -> Result<()> {
+    println!("cancel order...");
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Step 1: Set up transaction for cancel_order
+    let mut ptb = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
+        .deep_book
+        .cancel_order(
+            "DEEP_SUI",
+            &"MANAGER_2".to_string(),
+            184467440755542260233709402668,
+            &mut ptb,
+        )
+        .await?;
+
+    let pt = ptb.finish();
+    // Step 2: Fetch a suitable gas coin
+    let gas_coin = get_gas_coin(&client, sender).await?;
+
+    // Step 3: Set up gas and create transaction data
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
+
+    // Step 4: Sign and execute the transaction
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("Transaction response: {:?}", transaction_response);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_cancel_alls_orders() -> Result<()> {
+    println!("cancel all orders...");
+    let (client, sender, deep_book_client) = setup_client().await?;
+
+    // Step 1: Set up transaction for cancel all orders
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book
+        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string(), &mut ptb)
+        .await?;
+
+    let pt = ptb.finish();
+    // Step 2: Fetch a suitable gas coin
+    let gas_coin = get_gas_coin(&client, sender).await?;
+
+    // Step 3: Set up gas and create transaction data
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
+
+    // Step 4: Sign and execute the transaction
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("Transaction response: {:?}", transaction_response);
+
+    Ok(())
+}
 
 #[tokio::test]
 #[serial]

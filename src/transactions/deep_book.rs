@@ -1,13 +1,15 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result, anyhow};
 use sui_sdk::SuiClient;
 use sui_sdk::types::SUI_CLOCK_OBJECT_ID;
 use sui_sdk::types::base_types::ObjectID;
 use sui_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use sui_sdk::types::transaction::{CallArg, Command, ProgrammableMoveCall};
+use sui_types::transaction::ProgrammableTransaction;
 
 use super::balance_manager::BalanceManagerContract;
+use crate::types::{OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions};
 use crate::utils::config::{DEEP_SCALAR, DeepBookConfig, FLOAT_SCALAR, GAS_BUDGET, MAX_TIMESTAMP};
-use crate::utils::{get_object_arg, parse_type_input};
+use crate::utils::{get_clock_object_arg, get_object_arg, parse_type_input};
 
 #[derive(Clone)]
 pub struct DeepBookContract {
@@ -27,6 +29,336 @@ impl DeepBookContract {
             config,
             balance_manager,
         }
+    }
+
+    pub async fn place_limit_order(
+        &self,
+        params: &PlaceLimitOrderParams,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let PlaceLimitOrderParams {
+            pool_key,
+            balance_manager_key,
+            client_order_id,
+            price,
+            quantity,
+            is_bid,
+            expiration,
+            order_type,
+            self_matching_option,
+            pay_with_deep,
+        } = params;
+
+        let balance_manager = self
+            .config
+            .get_balance_manager(balance_manager_key.as_str());
+
+        let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
+            .await
+            .context("Failed to get object argument for balance_manager")?;
+
+        let balance_manager_arg = ptb.input(balance_manager_object)?;
+
+        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "generate_proof_as_owner".to_string(),
+            arguments: vec![balance_manager_arg],
+            type_arguments: vec![],
+        })));
+
+        let pools = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(pools.base_coin);
+
+        let quote_coin = self.config.get_coin(pools.quote_coin);
+        let pool_object = get_object_arg(&self.client, pools.address)
+            .await
+            .context("Failed to get object argument for pool")?;
+        let type_argument_base_coin = parse_type_input(base_coin.coin_type)?;
+
+        let type_argument_quote_coin = parse_type_input(quote_coin.coin_type)?;
+
+        let pool_arg = ptb.input(pool_object)?;
+
+        let client_order_id_arg = ptb.pure(client_order_id.parse().unwrap_or(0u64))?;
+
+        let input_order_number = match order_type {
+            Some(value) => *value as u8,
+            None => OrderType::NoRestriction as u8,
+        };
+        let order_type_arg = ptb.pure(input_order_number)?;
+
+        let self_matching_option_number = match self_matching_option {
+            Some(value) => *value as u8,
+            None => SelfMatchingOptions::SelfMatchingAllowed as u8,
+        };
+
+        let self_matching_option_number = ptb.pure(self_matching_option_number)?;
+
+        let input_price = ((price * FLOAT_SCALAR as f64 * quote_coin.scalar as f64)
+            / base_coin.scalar as f64)
+            .round() as u64;
+
+        let input_price_arg = ptb.pure(input_price)?;
+
+        let input_quantity = (quantity * base_coin.scalar as f64).round() as u64;
+
+        let input_quantity_arg = ptb.pure(input_quantity)?;
+
+        let is_bid_arg = ptb.pure(is_bid)?;
+
+        let pay_with_deep_bool = match pay_with_deep {
+            Some(value) => *value,
+            None => true,
+        };
+
+        let pay_with_deep_arg = ptb.pure(pay_with_deep_bool)?;
+
+        let expiration_number = match expiration {
+            Some(value) => *value,
+            None => MAX_TIMESTAMP,
+        };
+
+        let expiration_number_valid = expiration_number;
+
+        let expiration_arg = ptb.pure(expiration_number_valid)?;
+
+        let clock_object = get_clock_object_arg(&self.client).await?;
+
+        let clock_arg = ptb.input(clock_object)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "place_limit_order".to_string(),
+            arguments: vec![
+                pool_arg,
+                balance_manager_arg,
+                trade_proof,
+                client_order_id_arg,
+                order_type_arg,
+                self_matching_option_number,
+                input_price_arg,
+                input_quantity_arg,
+                is_bid_arg,
+                pay_with_deep_arg,
+                expiration_arg,
+                clock_arg,
+            ],
+            type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
+        })));
+
+        Ok(())
+    }
+
+    pub async fn place_market_order(
+        &self,
+        params: &PlaceMarketOrderParams,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let PlaceMarketOrderParams {
+            pool_key,
+            balance_manager_key,
+            client_order_id,
+            quantity,
+            is_bid,
+            self_matching_option,
+            pay_with_deep,
+        } = params;
+
+        let balance_manager = self
+            .config
+            .get_balance_manager(balance_manager_key.as_str());
+
+        let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
+            .await
+            .context("Failed to get object argument for balance_manager")?;
+
+        let balance_manager_arg = ptb.input(balance_manager_object)?;
+
+        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "generate_proof_as_owner".to_string(),
+            arguments: vec![balance_manager_arg],
+            type_arguments: vec![],
+        })));
+
+        let pools = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(pools.base_coin);
+
+        let quote_coin = self.config.get_coin(pools.quote_coin);
+        let pool_object = get_object_arg(&self.client, pools.address)
+            .await
+            .context("Failed to get object argument for pool")?;
+        let type_argument_base_coin = parse_type_input(base_coin.coin_type)?;
+
+        let type_argument_quote_coin = parse_type_input(quote_coin.coin_type)?;
+
+        let pool_arg = ptb.input(pool_object)?;
+
+        let client_order_id_arg = ptb.pure(client_order_id.parse().unwrap_or(0u64))?;
+
+        let self_matching_option_number = match self_matching_option {
+            Some(value) => *value as u8,
+            None => SelfMatchingOptions::SelfMatchingAllowed as u8,
+        };
+
+        let self_matching_option_number = ptb.pure(self_matching_option_number)?;
+
+        let input_quantity = (quantity * base_coin.scalar as f64).round() as u64;
+
+        let input_quantity_arg = ptb.pure(input_quantity)?;
+
+        let is_bid_arg = ptb.pure(is_bid)?;
+
+        let pay_with_deep_bool = match pay_with_deep {
+            Some(value) => *value,
+            None => true,
+        };
+
+        let pay_with_deep_arg = ptb.pure(pay_with_deep_bool)?;
+
+        let clock_object = get_clock_object_arg(&self.client).await?;
+
+        let clock_arg = ptb.input(clock_object)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "place_market_order".to_string(),
+            arguments: vec![
+                pool_arg,
+                balance_manager_arg,
+                trade_proof,
+                client_order_id_arg,
+                self_matching_option_number,
+                input_quantity_arg,
+                is_bid_arg,
+                pay_with_deep_arg,
+                clock_arg,
+            ],
+            type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
+        })));
+
+        Ok(())
+    }
+
+    pub async fn cancel_order(
+        &self,
+        pool_key: &str,
+        balance_manager_key: &String,
+        order_id: u128,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let balance_manager = self.config.get_balance_manager(balance_manager_key);
+
+        let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
+            .await
+            .context("Failed to get object argument for balance_manager")?;
+
+        let balance_manager_arg = ptb.input(balance_manager_object)?;
+
+        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "generate_proof_as_owner".to_string(),
+            arguments: vec![balance_manager_arg],
+            type_arguments: vec![],
+        })));
+
+        let pools = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(pools.base_coin);
+
+        let quote_coin = self.config.get_coin(pools.quote_coin);
+        let pool_object = get_object_arg(&self.client, pools.address)
+            .await
+            .context("Failed to get object argument for pool")?;
+        let type_argument_base_coin = parse_type_input(base_coin.coin_type)?;
+
+        let type_argument_quote_coin = parse_type_input(quote_coin.coin_type)?;
+
+        let pool_arg = ptb.input(pool_object)?;
+
+        let order_id_arg = ptb.pure(order_id)?;
+
+        let clock_object = get_clock_object_arg(&self.client).await?;
+
+        let clock_arg = ptb.input(clock_object)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "cancel_order".to_string(),
+            arguments: vec![
+                pool_arg,
+                balance_manager_arg,
+                trade_proof,
+                order_id_arg,
+                clock_arg,
+            ],
+            type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
+        })));
+
+        Ok(())
+    }
+
+    pub async fn cancel_all_orders(
+        &self,
+        pool_key: &str,
+        balance_manager_key: &String,
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let balance_manager = self.config.get_balance_manager(balance_manager_key);
+
+        let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
+            .await
+            .context("Failed to get object argument for balance_manager")?;
+
+        let balance_manager_arg = ptb.input(balance_manager_object)?;
+
+        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "balance_manager".to_string(),
+            function: "generate_proof_as_owner".to_string(),
+            arguments: vec![balance_manager_arg],
+            type_arguments: vec![],
+        })));
+
+        let pools = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(pools.base_coin);
+
+        let quote_coin = self.config.get_coin(pools.quote_coin);
+        let pool_object = get_object_arg(&self.client, pools.address)
+            .await
+            .context("Failed to get object argument for pool")?;
+        let type_argument_base_coin = parse_type_input(base_coin.coin_type)?;
+
+        let type_argument_quote_coin = parse_type_input(quote_coin.coin_type)?;
+
+        let pool_arg = ptb.input(pool_object)?;
+
+        let clock_object = get_clock_object_arg(&self.client).await?;
+
+        let clock_arg = ptb.input(clock_object)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "cancel_all_orders".to_string(),
+            arguments: vec![pool_arg, balance_manager_arg, trade_proof, clock_arg],
+            type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
+        })));
+
+        Ok(())
     }
 
     pub async fn mid_price(

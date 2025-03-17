@@ -53,7 +53,7 @@ pub struct PlaceLimitOrderParams {
     pub price: f64,
     pub quantity: f64,
     pub is_bid: bool,
-    pub expiration: Option<u128>,
+    pub expiration: Option<u64>,
     pub order_type: Option<OrderType>,
     pub self_matching_option: Option<SelfMatchingOptions>,
     pub pay_with_deep: Option<bool>,
