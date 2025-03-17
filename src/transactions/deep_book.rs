@@ -1,6 +1,5 @@
 use anyhow::{Context, Ok, Result, anyhow};
 use sui_sdk::SuiClient;
-use sui_sdk::types::SUI_CLOCK_OBJECT_ID;
 use sui_sdk::types::base_types::ObjectID;
 use sui_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use sui_sdk::types::transaction::{CallArg, Command, ProgrammableMoveCall};
@@ -9,7 +8,7 @@ use sui_types::transaction::ProgrammableTransaction;
 use super::balance_manager::BalanceManagerContract;
 use crate::types::{OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions};
 use crate::utils::config::{DEEP_SCALAR, DeepBookConfig, FLOAT_SCALAR, GAS_BUDGET, MAX_TIMESTAMP};
-use crate::utils::{get_clock_object_arg, get_object_arg, parse_type_input};
+use crate::utils::{get_object_arg, parse_type_input};
 
 #[derive(Clone)]
 pub struct DeepBookContract {
@@ -125,9 +124,7 @@ impl DeepBookContract {
 
         let expiration_arg = ptb.pure(expiration_number_valid)?;
 
-        let clock_object = get_clock_object_arg(&self.client).await?;
-
-        let clock_arg = ptb.input(clock_object)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
 
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
@@ -223,9 +220,7 @@ impl DeepBookContract {
 
         let pay_with_deep_arg = ptb.pure(pay_with_deep_bool)?;
 
-        let clock_object = get_clock_object_arg(&self.client).await?;
-
-        let clock_arg = ptb.input(clock_object)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
 
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
@@ -288,9 +283,7 @@ impl DeepBookContract {
 
         let order_id_arg = ptb.pure(order_id)?;
 
-        let clock_object = get_clock_object_arg(&self.client).await?;
-
-        let clock_arg = ptb.input(clock_object)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
 
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
@@ -346,9 +339,7 @@ impl DeepBookContract {
 
         let pool_arg = ptb.input(pool_object)?;
 
-        let clock_object = get_clock_object_arg(&self.client).await?;
-
-        let clock_arg = ptb.input(clock_object)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
 
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
