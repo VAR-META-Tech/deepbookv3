@@ -11,6 +11,7 @@ use sui_sdk::{
         type_input::TypeInput,
     },
 };
+use sui_types::SUI_CLOCK_OBJECT_ID;
 
 pub mod config;
 pub mod constants;
@@ -87,15 +88,51 @@ pub async fn get_exact_coin(
 
     let coin_ref = (coin.coin_object_id, coin.version, coin.digest);
     let coin_arg = ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject(coin_ref)))?;
+    println!("coin_ref: {:?}", coin_ref);
 
+    println!("coin: {:?}", coin);
     // Split the coin if it has more balance than required
     let exact_coin = if coin.balance > amount {
         let split_amount = ptb.input(CallArg::Pure(bcs::to_bytes(&amount)?))?;
-        let split_coin = ptb.command(Command::SplitCoins(coin_arg, vec![split_amount]));
+        let split_coin = ptb.command(Command::SplitCoins(Argument::GasCoin, vec![split_amount]));
+        println!("split_coin: {:?}", split_coin);
+
         split_coin
     } else {
         coin_arg
     };
 
     Ok(exact_coin)
+}
+
+pub async fn get_clock_object_arg(client: &SuiClient) -> Result<CallArg, anyhow::Error> {
+    let object_response: SuiObjectResponse = client
+        .read_api()
+        .get_object_with_options(SUI_CLOCK_OBJECT_ID, SuiObjectDataOptions::full_content())
+        .await?;
+
+    let object_data = object_response.data.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "Missing data in object response for '{}'",
+            SUI_CLOCK_OBJECT_ID
+        )
+    })?;
+
+    let res = match &object_data.owner {
+        Some(sui_sdk::types::object::Owner::Shared {
+            initial_shared_version,
+        }) => {
+            // Return as Shared Object
+            CallArg::Object(ObjectArg::SharedObject {
+                id: SUI_CLOCK_OBJECT_ID,
+                initial_shared_version: *initial_shared_version,
+                mutable: false,
+            })
+        }
+        _ => {
+            return Err(anyhow::anyhow!("Clock object is not a shared object"));
+        }
+    };
+
+    Ok(res)
 }

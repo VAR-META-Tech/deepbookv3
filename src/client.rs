@@ -58,7 +58,7 @@ impl DeepBookClient {
                 BalanceManagerContract::new(client.clone(), config.clone()),
             ),
             deep_book_admin: DeepBookAdminContract::new(client.clone(), config.clone()),
-            flash_loans: FlashLoanContract::new(config.clone()),
+            flash_loans: FlashLoanContract::new(client.clone(), config.clone()),
             governance: GovernanceContract::new(
                 client.clone(),
                 config.clone(),

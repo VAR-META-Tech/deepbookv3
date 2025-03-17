@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::collections::HashMap;
 
-use sui_sdk::types::base_types::SuiAddress;
-
 use crate::transactions::balance_manager::BalanceManagerContract;
 use crate::types::{BalanceManager, Coin, Pool};
+use sui_sdk::types::base_types::SuiAddress;
 
 use crate::utils::constants::{
     MAINNET_PACKAGE_IDS, TESTNET_PACKAGE_IDS, get_mainnet_coins, get_mainnet_pools,
