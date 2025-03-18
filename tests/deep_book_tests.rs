@@ -32,9 +32,10 @@ async fn test_place_limit_order() -> Result<()> {
         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
         pay_with_deep: Some(true),
     };
-    let ptb = deep_book_client
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+    deep_book_client
         .deep_book
-        .place_limit_order(&params)
+        .place_limit_order(&params, &mut ptb)
         .await?;
 
     let pt = ptb.finish();
@@ -76,10 +77,11 @@ async fn test_place_market_order() -> Result<()> {
         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
         pay_with_deep: Some(true),
     };
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
 
-    let ptb = deep_book_client
+    deep_book_client
         .deep_book
-        .place_market_order(&params)
+        .place_market_order(&params, &mut ptb)
         .await?;
 
     let pt = ptb.finish();
@@ -113,12 +115,15 @@ async fn test_cancel_order() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
     // Step 1: Set up transaction for cancel_order
-    let ptb = deep_book_client
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
         .deep_book
         .cancel_order(
             "DEEP_SUI",
             &"MANAGER_2".to_string(),
             184467440755542260233709402626,
+            &mut ptb,
         )
         .await?;
 
@@ -147,9 +152,11 @@ async fn test_cancel_alls_orders() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
     // Step 1: Set up transaction for cancel all orders
-    let ptb = deep_book_client
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
         .deep_book
-        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string())
+        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string(), &mut ptb)
         .await?;
 
     let pt = ptb.finish();

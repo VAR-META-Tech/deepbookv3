@@ -33,8 +33,8 @@ impl DeepBookContract {
     pub async fn place_limit_order(
         &self,
         params: &PlaceLimitOrderParams,
-    ) -> Result<(ProgrammableTransactionBuilder)> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let PlaceLimitOrderParams {
@@ -147,15 +147,14 @@ impl DeepBookContract {
             type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn place_market_order(
         &self,
         params: &PlaceMarketOrderParams,
-    ) -> Result<(ProgrammableTransactionBuilder)> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let PlaceMarketOrderParams {
@@ -241,7 +240,7 @@ impl DeepBookContract {
             type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn cancel_order(
@@ -249,9 +248,8 @@ impl DeepBookContract {
         pool_key: &str,
         balance_manager_key: &String,
         order_id: u128,
-    ) -> Result<(ProgrammableTransactionBuilder)> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
@@ -301,16 +299,15 @@ impl DeepBookContract {
             type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn cancel_all_orders(
         &self,
         pool_key: &str,
         balance_manager_key: &String,
-    ) -> Result<(ProgrammableTransactionBuilder)> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
@@ -352,7 +349,7 @@ impl DeepBookContract {
             type_arguments: vec![type_argument_base_coin, type_argument_quote_coin],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn mid_price(
