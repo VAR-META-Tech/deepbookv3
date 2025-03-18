@@ -88,13 +88,10 @@ pub async fn get_exact_coin(
 
     let coin_ref = (coin.coin_object_id, coin.version, coin.digest);
     let coin_arg = ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject(coin_ref)))?;
-    println!("coin_ref: {:?}", coin_ref);
-
-    println!("coin: {:?}", coin);
     // Split the coin if it has more balance than required
     let exact_coin = if coin.balance > amount {
         let split_amount = ptb.input(CallArg::Pure(bcs::to_bytes(&amount)?))?;
-        let split_coin = ptb.command(Command::SplitCoins(Argument::GasCoin, vec![split_amount]));
+        let split_coin = ptb.command(Command::SplitCoins(coin_arg, vec![split_amount]));
         println!("split_coin: {:?}", split_coin);
 
         split_coin
@@ -103,6 +100,50 @@ pub async fn get_exact_coin(
     };
 
     Ok(exact_coin)
+}
+
+pub async fn get_coins_to_transfer(
+    client: &SuiClient,
+    owner: SuiAddress,
+    coin_type: &str,
+    amount: u64,
+    ptb: &mut ProgrammableTransactionBuilder,
+) -> Result<Argument> {
+    if coin_type != "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI" {
+        let coins = client
+            .coin_read_api()
+            .get_coins(owner, Some(coin_type.to_string()), None, None)
+            .await
+            .context(format!("Failed to fetch coins for type {}", coin_type))?
+            .data;
+
+        // merge coins
+        let mut coin_arguments: Vec<Argument> = coins
+            .iter()
+            .map(|coin| {
+                ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject((
+                    coin.coin_object_id,
+                    coin.version,
+                    coin.digest,
+                ))))
+                .expect("Failed to create input")
+            })
+            .collect();
+
+        let merge_coins = coin_arguments.remove(0);
+        if coins.len() > 1 {
+            ptb.command(Command::MergeCoins(merge_coins, coin_arguments));
+        }
+        // Split the coin from merge_coins
+        let split_amount = ptb.pure(amount)?;
+        let split_coin = ptb.command(Command::SplitCoins(merge_coins, vec![split_amount]));
+        Ok(split_coin)
+    } else {
+        // Split the coin from gas_coins
+        let split_amount = ptb.pure(amount)?;
+        let split_coin = ptb.command(Command::SplitCoins(Argument::GasCoin, vec![split_amount]));
+        Ok(split_coin)
+    }
 }
 
 pub async fn get_clock_object_arg(client: &SuiClient) -> Result<CallArg, anyhow::Error> {

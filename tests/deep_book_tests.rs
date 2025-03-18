@@ -32,10 +32,9 @@ async fn test_place_limit_order() -> Result<()> {
         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
         pay_with_deep: Some(true),
     };
-    let mut ptb = ProgrammableTransactionBuilder::new();
-    deep_book_client
+    let ptb = deep_book_client
         .deep_book
-        .place_limit_order(&params, &mut ptb)
+        .place_limit_order(&params)
         .await?;
 
     let pt = ptb.finish();
@@ -77,11 +76,10 @@ async fn test_place_market_order() -> Result<()> {
         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
         pay_with_deep: Some(true),
     };
-    let mut ptb = ProgrammableTransactionBuilder::new();
 
-    deep_book_client
+    let ptb = deep_book_client
         .deep_book
-        .place_market_order(&params, &mut ptb)
+        .place_market_order(&params)
         .await?;
 
     let pt = ptb.finish();
@@ -115,15 +113,12 @@ async fn test_cancel_order() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
     // Step 1: Set up transaction for cancel_order
-    let mut ptb = ProgrammableTransactionBuilder::new();
-
-    deep_book_client
+    let ptb = deep_book_client
         .deep_book
         .cancel_order(
             "DEEP_SUI",
             &"MANAGER_2".to_string(),
-            184467440755542260233709402668,
-            &mut ptb,
+            184467440755542260233709402626,
         )
         .await?;
 
@@ -152,10 +147,9 @@ async fn test_cancel_alls_orders() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
     // Step 1: Set up transaction for cancel all orders
-    let mut ptb = ProgrammableTransactionBuilder::new();
-    deep_book_client
+    let ptb = deep_book_client
         .deep_book
-        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string(), &mut ptb)
+        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string())
         .await?;
 
     let pt = ptb.finish();

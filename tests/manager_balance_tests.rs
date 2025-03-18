@@ -5,6 +5,7 @@ use serial_test::serial;
 use sui_sdk::types::{
     programmable_transaction_builder::ProgrammableTransactionBuilder, transaction::TransactionData,
 };
+use sui_types::base_types::ObjectRef;
 use test_helper::{get_gas_coin, setup_client, sign_and_execute};
 use tokio::time::{Duration, sleep}; // Ensure `tokio` is used for async tests
 
@@ -68,6 +69,37 @@ async fn test_check_manager_balance() -> Result<()> {
 
 #[tokio::test]
 #[serial]
+async fn test_deposit_to_manager() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let pt = deep_book_client
+        .balance_manager
+        .deposit_into_manager("MANAGER_2", "SUI", 1.1)
+        .await?
+        .finish();
+    let gas_coins = client
+        .coin_read_api()
+        .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
+        .await?
+        .data;
+    let gas_object_refs: Vec<ObjectRef> = gas_coins
+        .iter()
+        .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
+        .collect();
+
+    let gas_budget = 10_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data: TransactionData =
+        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
+
+    println!("Signing and executing transaction...");
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("transaction_response: {:?} ", transaction_response);
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
 async fn test_withdraw_from_manager() -> Result<()> {
     println!("Withdrawing from manager...");
     let (client, sender, deep_book_client) = setup_client().await?;
@@ -111,7 +143,7 @@ async fn test_withdraw_all_from_manager() -> Result<()> {
     let recipient = sender; // Self-withdrawal test
     let pt = deep_book_client
         .balance_manager
-        .withdraw_all_from_manager("MANAGER_2", "SUI", recipient)
+        .withdraw_all_from_manager("MANAGER_2", "USDC", recipient)
         .await?;
 
     // Step 2: Fetch a suitable gas coin

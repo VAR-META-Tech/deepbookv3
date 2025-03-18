@@ -141,67 +141,62 @@ pub async fn sign_and_execute(
 //     Ok(())
 // }
 
-// #[tokio::main]
-// async fn main() -> Result<(), anyhow::Error> {
-//     let params = PlaceLimitOrderParams {
-//         pool_key: "DEEP_SUI".to_string(),
-//         balance_manager_key: "MANAGER_2".to_string(),
-//         client_order_id: "234affs3".to_string(),
-//         price: 0.01,
-//         quantity: 15.0,
-//         is_bid: true,
-//         expiration: None,
-//         order_type: Some(OrderType::NoRestriction),
-//         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
-//         pay_with_deep: Some(true),
-//     };
-
-//     let pt = deep_book_client
-//         .deep_book
-//         .place_limit_order(&client, &params)
-//         .await?;
-//     println!("pt2222: {:}", pt);
-//     let gas_coin = get_gas_coin(&client, sender).await?;
-
-//     // Step 7: Set up gas and create transaction data
-//     let gas_budget = 50_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data =
-//         TransactionData::new_programmable(sender, vec![gas_coin], pt, gas_budget, gas_price);
-
-//     // Step 8: Sign and execute the transaction
-//     println!("Signing and executing transaction...");
-//     let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
-
-//     println!("transaction_response: {:?} ", transaction_response);
-//     Ok(())
-// }
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
+    let pt = deep_book_client
+        .balance_manager
+        .deposit_into_manager("MANAGER_2", "SUI", 1.1)
+        .await?
+        .finish();
+    let gas_coins = client
+        .coin_read_api()
+        .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
+        .await?
+        .data;
+    let gas_object_refs: Vec<ObjectRef> = gas_coins
+        .iter()
+        .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
+        .collect();
+    // Step 7: Set up gas and create transaction data
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data: TransactionData =
+        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
 
-    // Define pool key and tick distance
-    let pool_key = "SUI_DBUSDC";
-    let tick_from_mid = 10;
+    // Step 8: Sign and execute the transaction
+    println!("Signing and executing transaction...");
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
 
-    // Act: Fetch level 2 order book ticks
-    let (bid_prices, bid_sizes, ask_prices, ask_sizes) = deep_book_client
-        .get_level2_ticks_from_mid(pool_key, tick_from_mid)
-        .await?;
-
-    // Debugging Output
-    println!("Bid Prices: {:?}", bid_prices);
-    println!("Bid Sizes: {:?}", bid_sizes);
-    println!("Ask Prices: {:?}", ask_prices);
-    println!("Ask Sizes: {:?}", ask_sizes);
-
-    // ✅ Check at least some order book data is present (not empty)
-    assert!(
-        !bid_prices.is_empty() || !ask_prices.is_empty(),
-        "Either bid or ask prices should contain data"
-    );
-
-    println!("✅ Test passed: get_level2_ticks_from_mid returns valid data.");
+    println!("transaction_response: {:?} ", transaction_response);
     Ok(())
 }
+
+// #[tokio::main]
+// async fn main() -> Result<(), anyhow::Error> {
+//     let (client, sender, deep_book_client) = setup_client().await?;
+
+//     // Define pool key and tick distance
+//     let pool_key = "SUI_DBUSDC";
+//     let tick_from_mid = 10;
+
+//     // Act: Fetch level 2 order book ticks
+//     let (bid_prices, bid_sizes, ask_prices, ask_sizes) = deep_book_client
+//         .get_level2_ticks_from_mid(pool_key, tick_from_mid)
+//         .await?;
+
+//     // Debugging Output
+//     println!("Bid Prices: {:?}", bid_prices);
+//     println!("Bid Sizes: {:?}", bid_sizes);
+//     println!("Ask Prices: {:?}", ask_prices);
+//     println!("Ask Sizes: {:?}", ask_sizes);
+
+//     // ✅ Check at least some order book data is present (not empty)
+//     assert!(
+//         !bid_prices.is_empty() || !ask_prices.is_empty(),
+//         "Either bid or ask prices should contain data"
+//     );
+
+//     println!("✅ Test passed: get_level2_ticks_from_mid returns valid data.");
+//     Ok(())
+// }
