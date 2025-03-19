@@ -32,8 +32,8 @@ impl DeepBookContract {
 
     pub async fn place_limit_order(
         &self,
-        params: &PlaceLimitOrderParams,
         ptb: &mut ProgrammableTransactionBuilder,
+        params: &PlaceLimitOrderParams,
     ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -152,8 +152,8 @@ impl DeepBookContract {
 
     pub async fn place_market_order(
         &self,
-        params: &PlaceMarketOrderParams,
         ptb: &mut ProgrammableTransactionBuilder,
+        params: &PlaceMarketOrderParams,
     ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -245,10 +245,10 @@ impl DeepBookContract {
 
     pub async fn cancel_order(
         &self,
-        pool_key: &str,
-        balance_manager_key: &String,
-        order_id: u128,
         ptb: &mut ProgrammableTransactionBuilder,
+        pool_key: &str,
+        balance_manager_key: &str,
+        order_id: u128,
     ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -304,9 +304,9 @@ impl DeepBookContract {
 
     pub async fn cancel_all_orders(
         &self,
-        pool_key: &str,
-        balance_manager_key: &String,
         ptb: &mut ProgrammableTransactionBuilder,
+        pool_key: &str,
+        balance_manager_key: &str,
     ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 

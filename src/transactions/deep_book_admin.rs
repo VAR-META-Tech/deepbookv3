@@ -30,6 +30,7 @@ impl DeepBookAdminContract {
     /// Create a new pool as an admin
     pub async fn create_pool_admin(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         base_coin_key: &str,
         quote_coin_key: &str,
         tick_size: f64,
@@ -37,9 +38,7 @@ impl DeepBookAdminContract {
         min_size: f64,
         whitelisted: bool,
         stable_pool: bool,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let base_coin = self.config.get_coin(base_coin_key);
         let quote_coin = self.config.get_coin(quote_coin_key);
 
@@ -81,16 +80,15 @@ impl DeepBookAdminContract {
             ],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Unregister a pool as an admin
     pub async fn unregister_pool_admin(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pool.base_coin);
         let quote_coin = self.config.get_coin(pool.quote_coin);
@@ -116,16 +114,15 @@ impl DeepBookAdminContract {
             arguments: vec![pool_object_input, registry_id_input, admin_cap_input],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Update the allowed versions for a pool
     pub async fn update_allowed_versions(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pool.base_coin);
         let quote_coin = self.config.get_coin(pool.quote_coin);
@@ -151,13 +148,15 @@ impl DeepBookAdminContract {
             arguments: vec![pool_object_input, registry_id_input, admin_cap_input],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Enable a specific version
-    pub async fn enable_version(&self, version: u64) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    pub async fn enable_version(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        version: u64,
+    ) -> Result<()> {
         let registry_id = get_object_arg(&self.client, &self.config.registry_id).await?;
         let admin_cap = get_object_arg(&self.client, &self.admin_cap()?).await?;
 
@@ -172,20 +171,18 @@ impl DeepBookAdminContract {
             module: "registry".to_string(),
             function: "enable_version".to_string(),
             type_arguments: vec![],
-            arguments: vec![
-                registry_id_input,
-                version_input,
-                admin_cap_input,
-            ],
+            arguments: vec![registry_id_input, version_input, admin_cap_input],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Disable a specific version
-    pub async fn disable_version(&self, version: u64) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    pub async fn disable_version(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        version: u64,
+    ) -> Result<()> {
         let registry_id = get_object_arg(&self.client, &self.config.registry_id).await?;
         let admin_cap = get_object_arg(&self.client, &self.admin_cap()?).await?;
 
@@ -200,23 +197,18 @@ impl DeepBookAdminContract {
             module: "registry".to_string(),
             function: "disable_version".to_string(),
             type_arguments: vec![],
-            arguments: vec![
-                registry_id_input,
-                version_input,
-                admin_cap_input,
-            ],
+            arguments: vec![registry_id_input, version_input, admin_cap_input],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Set the treasury address where pool creation fees will be sent
     pub async fn set_treasury_address(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         treasury_address: SuiAddress,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let registry_id = get_object_arg(&self.client, &self.config.registry_id).await?;
         let admin_cap = get_object_arg(&self.client, &self.admin_cap()?).await?;
 
@@ -234,6 +226,6 @@ impl DeepBookAdminContract {
             arguments: vec![registry_id_input, treasury_address_input, admin_cap_input],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 }

@@ -24,9 +24,9 @@ impl FlashLoanContract {
     }
     pub async fn borrow_base_asset(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         amount: f64,
-        ptb: &mut ProgrammableTransactionBuilder,
     ) -> Result<(Argument, Argument), anyhow::Error> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -74,11 +74,11 @@ impl FlashLoanContract {
 
     pub async fn return_flashloan_base(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         borrow_amount: f64,
         coin: Argument,
         flash_loan: Argument,
-        ptb: &mut ProgrammableTransactionBuilder,
     ) -> Result<Argument, anyhow::Error> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -114,9 +114,9 @@ impl FlashLoanContract {
 
     pub async fn borrow_quote_asset(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         amount: f64,
-        ptb: &mut ProgrammableTransactionBuilder,
     ) -> Result<(Argument, Argument), anyhow::Error> {
         let package_id: ObjectID = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
@@ -164,11 +164,11 @@ impl FlashLoanContract {
 
     pub async fn return_flashloan_quote(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         borrow_amount: f64,
         coin: Argument,
         flash_loan: Argument,
-        ptb: &mut ProgrammableTransactionBuilder,
     ) -> Result<Argument, anyhow::Error> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 

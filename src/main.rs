@@ -144,11 +144,12 @@ pub async fn sign_and_execute(
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
-    let pt = deep_book_client
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
         .balance_manager
-        .deposit_into_manager("MANAGER_2", "SUI", 1.1)
-        .await?
-        .finish();
+        .deposit_into_manager(&mut ptb, "MANAGER_2", "SUI", 2.1)
+        .await?;
     let gas_coins = client
         .coin_read_api()
         .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
@@ -159,10 +160,15 @@ async fn main() -> Result<(), anyhow::Error> {
         .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
         .collect();
     // Step 7: Set up gas and create transaction data
-    let gas_budget = 50_000_000;
+    let gas_budget = 1_000_000;
     let gas_price = client.read_api().get_reference_gas_price().await?;
-    let tx_data: TransactionData =
-        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
+    let tx_data: TransactionData = TransactionData::new_programmable(
+        sender,
+        gas_object_refs,
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
     // Step 8: Sign and execute the transaction
     println!("Signing and executing transaction...");

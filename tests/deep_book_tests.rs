@@ -35,7 +35,7 @@ async fn test_place_limit_order() -> Result<()> {
     let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
     deep_book_client
         .deep_book
-        .place_limit_order(&params, &mut ptb)
+        .place_limit_order(&mut ptb, &params)
         .await?;
 
     let pt = ptb.finish();
@@ -81,7 +81,7 @@ async fn test_place_market_order() -> Result<()> {
 
     deep_book_client
         .deep_book
-        .place_market_order(&params, &mut ptb)
+        .place_market_order(&mut ptb, &params)
         .await?;
 
     let pt = ptb.finish();
@@ -120,10 +120,10 @@ async fn test_cancel_order() -> Result<()> {
     deep_book_client
         .deep_book
         .cancel_order(
-            "DEEP_SUI",
-            &"MANAGER_2".to_string(),
-            184467440755542260233709402626,
             &mut ptb,
+            "DEEP_SUI",
+            "MANAGER_2",
+            184467440755542260233709402626,
         )
         .await?;
 
@@ -156,7 +156,7 @@ async fn test_cancel_alls_orders() -> Result<()> {
 
     deep_book_client
         .deep_book
-        .cancel_all_orders("DEEP_SUI", &"MANAGER_2".to_string(), &mut ptb)
+        .cancel_all_orders(&mut ptb, "DEEP_SUI", "MANAGER_2")
         .await?;
 
     let pt = ptb.finish();

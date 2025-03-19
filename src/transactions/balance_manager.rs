@@ -30,9 +30,8 @@ impl BalanceManagerContract {
 
     pub async fn create_and_share_balance_manager(
         &self,
-    ) -> Result<ProgrammableTransactionBuilder, anyhow::Error> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+        ptb: &mut ProgrammableTransactionBuilder,
+    ) -> Result<()> {
         let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
 
         let manager = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -54,18 +53,17 @@ impl BalanceManagerContract {
             arguments: vec![manager],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn withdraw_from_manager(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
         coin_key: &str,
         amount_to_withdraw: f64,
         recipient: SuiAddress,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
         let coin = self.config.get_coin(coin_key);
@@ -93,17 +91,16 @@ impl BalanceManagerContract {
         let recipient_arg = ptb.pure(recipient)?;
         ptb.command(Command::TransferObjects(vec![coin_object], recipient_arg));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn withdraw_all_from_manager(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
         coin_key: &str,
         recipient: SuiAddress,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         // ✅ Fetch Manager ID
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
@@ -141,17 +138,16 @@ impl BalanceManagerContract {
         ));
 
         // ✅ Finalize Transaction
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn deposit_into_manager(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
         coin_key: &str,
         amount_to_deposit: f64,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         // Fetch manager ID and coin details
         let manager_id = self.config.get_balance_manager(manager_key).address;
         let coin = self.config.get_coin(coin_key);
@@ -163,10 +159,10 @@ impl BalanceManagerContract {
 
         let coin_arg = get_coins_to_transfer(
             &self.client,
+            ptb,
             self.config.sender_address,
             &coin.coin_type,
             deposit_input,
-            &mut ptb,
         )
         .await?;
 
@@ -195,16 +191,15 @@ impl BalanceManagerContract {
         })));
 
         // Finalize transaction
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn check_manager_balance(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
         coin_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder, anyhow::Error> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let manager_id = self.config.get_balance_manager(manager_key).address;
         let coin_type = self.config.get_coin(coin_key).coin_type;
 
@@ -228,7 +223,7 @@ impl BalanceManagerContract {
             arguments: vec![manager_arg],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn generate_proof(
@@ -308,10 +303,9 @@ impl BalanceManagerContract {
 
     pub async fn get_manager_owner(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         // ✅ Fetch Manager ID
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
@@ -336,15 +330,14 @@ impl BalanceManagerContract {
         })));
 
         // ✅ Finalize Transaction
-        Ok(ptb)
+        Ok(())
     }
 
     pub async fn get_manager_id(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         manager_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         // ✅ Fetch Manager ID
         let manager_id = self.config.get_balance_manager(manager_key).address;
 
@@ -369,6 +362,6 @@ impl BalanceManagerContract {
         })));
 
         // ✅ Finalize Transaction
-        Ok(ptb)
+        Ok(())
     }
 }

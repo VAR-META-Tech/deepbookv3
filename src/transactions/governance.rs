@@ -32,17 +32,16 @@ impl GovernanceContract {
     /// Stake a specified amount in the pool
     pub async fn stake(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         balance_manager_key: &str,
         stake_amount: f64,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(&mut ptb, balance_manager_key)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -72,22 +71,21 @@ impl GovernanceContract {
             ],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Unstake from the pool
     pub async fn unstake(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         balance_manager_key: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(&mut ptb, balance_manager_key)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -112,25 +110,24 @@ impl GovernanceContract {
             arguments: vec![pool_object_arg, manager_object_arg, trade_proof_arg],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Submit a governance proposal
     pub async fn submit_proposal(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         balance_manager_key: &str,
         taker_fee: f64,
         maker_fee: f64,
         stake_required: f64,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(&mut ptb, balance_manager_key)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -168,23 +165,22 @@ impl GovernanceContract {
             ],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 
     /// Vote on a governance proposal
     pub async fn vote(
         &self,
+        ptb: &mut ProgrammableTransactionBuilder,
         pool_key: &str,
         balance_manager_key: &str,
         proposal_id: &str,
-    ) -> Result<ProgrammableTransactionBuilder> {
-        let mut ptb = ProgrammableTransactionBuilder::new();
-
+    ) -> Result<()> {
         let pool = self.config.get_pool(pool_key);
         let balance_manager = self.config.get_balance_manager(balance_manager_key);
         let trade_proof_arg = self
             .balance_manager
-            .generate_proof(&mut ptb, balance_manager_key)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let base_coin = self.config.get_coin(&pool.base_coin);
@@ -214,6 +210,6 @@ impl GovernanceContract {
             ],
         })));
 
-        Ok(ptb)
+        Ok(())
     }
 }

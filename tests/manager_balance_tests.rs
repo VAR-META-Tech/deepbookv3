@@ -13,11 +13,12 @@ use tokio::time::{Duration, sleep}; // Ensure `tokio` is used for async tests
 #[serial]
 async fn test_create_and_share_balance_manager() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
 
     // Step 1: Generate transaction
-    let pt = deep_book_client
+    deep_book_client
         .balance_manager
-        .create_and_share_balance_manager()
+        .create_and_share_balance_manager(&mut ptb)
         .await?;
 
     // Step 2: Fetch gas coin
@@ -29,7 +30,7 @@ async fn test_create_and_share_balance_manager() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
@@ -71,11 +72,12 @@ async fn test_check_manager_balance() -> Result<()> {
 #[serial]
 async fn test_deposit_to_manager() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
-    let pt = deep_book_client
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+    deep_book_client
         .balance_manager
-        .deposit_into_manager("MANAGER_2", "SUI", 1.1)
-        .await?
-        .finish();
+        .deposit_into_manager(&mut ptb, "MANAGER_2", "SUI", 2.1)
+        .await?;
     let gas_coins = client
         .coin_read_api()
         .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
@@ -86,10 +88,15 @@ async fn test_deposit_to_manager() -> Result<()> {
         .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
         .collect();
 
-    let gas_budget = 10_000_000;
+    let gas_budget = 1_000_000;
     let gas_price = client.read_api().get_reference_gas_price().await?;
-    let tx_data: TransactionData =
-        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
+    let tx_data: TransactionData = TransactionData::new_programmable(
+        sender,
+        gas_object_refs,
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
     println!("Signing and executing transaction...");
     let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
@@ -103,13 +110,14 @@ async fn test_deposit_to_manager() -> Result<()> {
 async fn test_withdraw_from_manager() -> Result<()> {
     println!("Withdrawing from manager...");
     let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
 
     // Step 1: Set up transaction for withdrawal
     let withdraw_amount = 0.1;
     let recipient = sender; // Self-withdrawal test
     let pt = deep_book_client
         .balance_manager
-        .withdraw_from_manager("MANAGER_2", "SUI", withdraw_amount, recipient)
+        .withdraw_from_manager(&mut ptb, "MANAGER_2", "SUI", withdraw_amount, recipient)
         .await?;
 
     // Step 2: Fetch a suitable gas coin
@@ -121,7 +129,7 @@ async fn test_withdraw_from_manager() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
@@ -138,12 +146,13 @@ async fn test_withdraw_from_manager() -> Result<()> {
 async fn test_withdraw_all_from_manager() -> Result<()> {
     println!("Withdrawing from manager...");
     let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
 
     // Step 1: Set up transaction for withdrawal
     let recipient = sender; // Self-withdrawal test
-    let pt = deep_book_client
+    deep_book_client
         .balance_manager
-        .withdraw_all_from_manager("MANAGER_2", "USDC", recipient)
+        .withdraw_all_from_manager(&mut ptb, "MANAGER_2", "USDC", recipient)
         .await?;
 
     // Step 2: Fetch a suitable gas coin
@@ -155,7 +164,7 @@ async fn test_withdraw_all_from_manager() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );

@@ -72,14 +72,15 @@ impl DeepBookClient {
         manager_key: &str,
         coin_key: &str,
     ) -> Result<(String, f64)> {
+        let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
         // Fetch coin type and manager ID
         let coin = self.config.get_coin(coin_key);
         let coin_type = coin.coin_type.clone(); // Clone to return as String
 
         // Create transaction
-        let pt = self
-            .balance_manager
-            .check_manager_balance(manager_key, &coin_key)
+        self.balance_manager
+            .check_manager_balance(&mut ptb, manager_key, &coin_key)
             .await
             .context("Failed to create balance check transaction")?;
 
@@ -89,7 +90,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt.finish()),
+                TransactionKind::programmable(ptb.finish()),
                 None,
                 None,
                 None,
@@ -129,9 +130,10 @@ impl DeepBookClient {
     }
 
     pub async fn get_manager_owner(&self, manager_key: &str) -> Result<SuiAddress> {
-        let pt = self
-            .balance_manager
-            .get_manager_owner(manager_key)
+        let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+        self.balance_manager
+            .get_manager_owner(&mut ptb, manager_key)
             .await
             .context("Failed to create owner retrieval transaction")?;
 
@@ -140,7 +142,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt.finish()),
+                TransactionKind::programmable(ptb.finish()),
                 None,
                 None,
                 None,
@@ -174,9 +176,10 @@ impl DeepBookClient {
 
     /// ✅ **Get Manager ID**
     pub async fn get_manager_id(&self, manager_key: &str) -> Result<ID> {
-        let pt = self
-            .balance_manager
-            .get_manager_id(manager_key)
+        let mut ptb: ProgrammableTransactionBuilder = ProgrammableTransactionBuilder::new();
+
+        self.balance_manager
+            .get_manager_id(&mut ptb, manager_key)
             .await
             .context("Failed to create ID retrieval transaction")?;
 
@@ -185,7 +188,7 @@ impl DeepBookClient {
             .read_api()
             .dev_inspect_transaction_block(
                 self.sender_address,
-                TransactionKind::programmable(pt.finish()),
+                TransactionKind::programmable(ptb.finish()),
                 None,
                 None,
                 None,

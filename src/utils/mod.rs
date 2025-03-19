@@ -104,10 +104,10 @@ pub async fn get_exact_coin(
 
 pub async fn get_coins_to_transfer(
     client: &SuiClient,
+    ptb: &mut ProgrammableTransactionBuilder,
     owner: SuiAddress,
     coin_type: &str,
     amount: u64,
-    ptb: &mut ProgrammableTransactionBuilder,
 ) -> Result<Argument> {
     if coin_type != "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI" {
         let coins = client

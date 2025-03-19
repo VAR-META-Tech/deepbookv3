@@ -17,9 +17,9 @@ async fn test_stake() -> Result<()> {
     let mut ptb = ProgrammableTransactionBuilder::new();
 
     // Step 1: Set up stake transaction
-    let pt = deep_book_client
+    deep_book_client
         .governance
-        .stake("SUI_DBUSDC", "MANAGER_2", 10.0)
+        .stake(&mut ptb, "SUI_DBUSDC", "MANAGER_2", 10.0)
         .await?;
 
     // Step 2: Fetch gas coin
@@ -31,7 +31,7 @@ async fn test_stake() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
@@ -52,9 +52,9 @@ async fn test_unstake() -> Result<()> {
     let mut ptb = ProgrammableTransactionBuilder::new();
 
     // Step 1: Set up unstake transaction
-    let pt = deep_book_client
+    deep_book_client
         .governance
-        .unstake("SUI_DBUSDC", "MANAGER_2")
+        .unstake(&mut ptb, "SUI_DBUSDC", "MANAGER_2")
         .await?;
 
     // Step 2: Fetch gas coin
@@ -66,7 +66,7 @@ async fn test_unstake() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
@@ -87,9 +87,9 @@ async fn test_submit_proposal() -> Result<()> {
     let mut ptb = ProgrammableTransactionBuilder::new();
 
     // Step 1: Set up proposal submission transaction
-    let pt = deep_book_client
+    deep_book_client
         .governance
-        .submit_proposal("SUI_DBUSDC", "MANAGER_2", 0.001, 0.002, 50.0)
+        .submit_proposal(&mut ptb, "SUI_DBUSDC", "MANAGER_2", 0.001, 0.002, 50.0)
         .await?;
 
     // Step 2: Fetch gas coin
@@ -101,7 +101,7 @@ async fn test_submit_proposal() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
@@ -123,9 +123,9 @@ async fn test_vote() -> Result<()> {
 
     // Step 1: Set up voting transaction
     let proposal_id = "0x123456789abcdef"; // Replace with actual proposal ID
-    let pt = deep_book_client
+    deep_book_client
         .governance
-        .vote("SUI_DBUSDC", "MANAGER_2", proposal_id)
+        .vote(&mut ptb, "SUI_DBUSDC", "MANAGER_2", proposal_id)
         .await?;
 
     // Step 2: Fetch gas coin
@@ -137,7 +137,7 @@ async fn test_vote() -> Result<()> {
     let tx_data = TransactionData::new_programmable(
         sender,
         vec![gas_coin],
-        pt.finish(),
+        ptb.finish(),
         gas_budget,
         gas_price,
     );
