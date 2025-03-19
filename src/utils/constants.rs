@@ -48,6 +48,14 @@ pub fn get_testnet_coins() -> HashMap<&'static str, Coin> {
                 scalar: 1_000_000,
             },
         ),
+        (
+            "USDC",
+            Coin {
+                address: "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29",
+                coin_type: "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+                scalar: 1_000_000,
+            },
+        ),
     ])
 }
 

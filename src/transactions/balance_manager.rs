@@ -14,7 +14,7 @@ use sui_sdk::types::{
 };
 
 use crate::utils::config::DeepBookConfig;
-use crate::utils::get_object_arg;
+use crate::utils::{get_coins_to_transfer, get_object_arg};
 use crate::utils::{get_exact_coin, parse_type_input};
 
 #[derive(Clone)]
@@ -160,7 +160,8 @@ impl BalanceManagerContract {
         let deposit_input = (amount_to_deposit * coin.scalar as f64) as u64;
 
         // Get an exact coin object for deposit
-        let coin_arg = get_exact_coin(
+
+        let coin_arg = get_coins_to_transfer(
             &self.client,
             self.config.sender_address,
             &coin.coin_type,
@@ -184,7 +185,6 @@ impl BalanceManagerContract {
 
         // Insert inputs into transaction
         let manager_arg = ptb.input(manager_object)?;
-
         // Create Move Call
         ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
             package: package_id,
