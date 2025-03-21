@@ -8,6 +8,8 @@ use sui_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use test_helper::{get_gas_coin, setup_client, sign_and_execute};
 use tokio::time::{Duration, sleep};
 
+//Only work with admin wallet
+
 #[tokio::test]
 #[serial]
 async fn test_create_pool_admin() -> Result<()> {

@@ -31,7 +31,7 @@ pub async fn setup_client() -> Result<(SuiClient, SuiAddress, DeepBookClient)> {
     let deep_book_client = DeepBookClient::new(
         client.clone(),
         sender,
-        "devnet",
+        "testnet",
         Some(balance_managers),
         None,
         None,

@@ -98,9 +98,9 @@ impl DeepBookConfig {
             pools,
             balance_managers,
             sender_address: sender_address,
-            deepbook_package_id: package_ids.deepbook_package_id.clone().to_owned(),
-            registry_id: package_ids.registry_id.clone().to_owned(),
-            deep_treasury_id: package_ids.deep_treasury_id.clone().to_owned(),
+            deepbook_package_id: package_ids.deepbook_package_id.to_owned(),
+            registry_id: package_ids.registry_id.to_owned(),
+            deep_treasury_id: package_ids.deep_treasury_id.to_owned(),
             admin_cap,
             // balance_manager: BalanceManagerContract::new(),
         }
@@ -123,9 +123,4 @@ impl DeepBookConfig {
             .get(key)
             .expect(&format!("Balance manager with key {} not found.", key))
     }
-}
-
-fn normalize_sui_address(address: String) -> String {
-    // Placeholder function for address normalization
-    address.to_lowercase()
 }

@@ -63,7 +63,7 @@ impl DeepBookContract {
 
         let trade_proof = self
             .balance_manager
-            .generate_proof_as_owner(ptb, balance_manager.address)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let pools = self.config.get_pool(pool_key);
@@ -177,7 +177,7 @@ impl DeepBookContract {
 
         let trade_proof = self
             .balance_manager
-            .generate_proof_as_owner(ptb, balance_manager.address)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let pools = self.config.get_pool(pool_key);
@@ -257,7 +257,7 @@ impl DeepBookContract {
 
         let trade_proof = self
             .balance_manager
-            .generate_proof_as_owner(ptb, balance_manager.address)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let pools = self.config.get_pool(pool_key);
@@ -312,7 +312,7 @@ impl DeepBookContract {
 
         let trade_proof = self
             .balance_manager
-            .generate_proof_as_owner(ptb, balance_manager.address)
+            .generate_proof(ptb, balance_manager_key)
             .await?;
 
         let pools = self.config.get_pool(pool_key);
