@@ -14,6 +14,110 @@ pub const MAINNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
     deep_treasury_id: "0x032abf8948dda67a271bcc18e776dbbcfb0d58c8d288a700ff0d5521e57a1ffe",
 };
 
+pub const DEVNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
+    deepbook_package_id: "0xfd76b488f541a06c8747f5932624a411049ee1b89c2370ee042ff39d9c3aa643",
+    registry_id: "0xe4ab9ec40cc71134d41360e0981cf6e32ba95e305e24ab105fecb197b8bef831",
+    deep_treasury_id: "0x225de6ef76c5dd60b65a7e7724dedfa448276b2be0d95f0b540736d4d9a84755",
+};
+
+pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
+    HashMap::from([
+        (
+            "DEEP",
+            Coin {
+                address: "0x15cdfe7157290fa17c3c0f75a9663a4cd06c2904876bc077c81f3649de7d481a",
+                coin_type: "0x15cdfe7157290fa17c3c0f75a9663a4cd06c2904876bc077c81f3649de7d481a::deep::DEEP",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "SUI",
+            Coin {
+                address: "0x0000000000000000000000000000000000000000000000000000000000000002",
+                coin_type: "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+                scalar: 1_000_000_000,
+            },
+        ),
+        (
+            "DBUSDC",
+            Coin {
+                address: "0x983c08cc0866d31081707179f36634b7e8bcaaac3b92bd4a0742daba30f0e6f3",
+                coin_type: "0x983c08cc0866d31081707179f36634b7e8bcaaac3b92bd4a0742daba30f0e6f3::dbusdc::DBUSDC",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "DBUSDT",
+            Coin {
+                address: "0x8636c767476db780a27324b0c961ff0aa783c1953f06bf31fadcd1e3770bde9c",
+                coin_type: "0x8636c767476db780a27324b0c961ff0aa783c1953f06bf31fadcd1e3770bde9c::dbusdt::DBUSDT",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "PI",
+            Coin {
+                address: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3",
+                coin_type: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3::pi::PI",
+                scalar: 1_000_000,
+            },
+        ),
+    ])
+}
+
+pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
+    HashMap::from([
+        (
+            "DEEP_SUI", // whitelisted pool
+            Pool {
+                address: "0xfec71b6b2a00bfdb1e41acc43bbcd10c3f4d246973d39cb8bacee0366f79b5d9",
+                base_coin: "DEEP",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "SUI_DBUSDC", // whitelisted pool
+            Pool {
+                address: "0x8b5052f0b83d692c7ee157f8a44d0a3b272f23257130a8b286c49e7fc830ef54",
+                base_coin: "SUI",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DEEP_DBUSDC",
+            Pool {
+                address: "0x3571bfb4cad9fac64d489a5f1b6b91c66dfc9f21022d65b374a02903c1f2d474",
+                base_coin: "DEEP",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DBUSDT_DBUSDC",
+            Pool {
+                address: "0x4241fb8f4b8965f8df5a8a80d9c42292d35b7b24d7f3831bb555ffe869337416",
+                base_coin: "DBUSDT",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DBUSDT_SUI", // added price deep point
+            Pool {
+                address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
+                base_coin: "DBUSDT",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "PI_SUI",
+            Pool {
+                address: "0x4b4dbcbc7ae876e77accc279860a65775bacf73932963be1c3b433cd6e859c24",
+                base_coin: "PI",
+                quote_coin: "SUI",
+            },
+        ),
+    ])
+}
+
 pub fn get_testnet_coins() -> HashMap<&'static str, Coin> {
     HashMap::from([
         (

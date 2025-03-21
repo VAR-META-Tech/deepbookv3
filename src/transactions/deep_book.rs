@@ -3,12 +3,14 @@ use sui_sdk::SuiClient;
 use sui_sdk::types::base_types::ObjectID;
 use sui_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use sui_sdk::types::transaction::{CallArg, Command, ProgrammableMoveCall};
-use sui_types::transaction::ProgrammableTransaction;
+use sui_types::transaction::{Argument, ProgrammableTransaction};
 
 use super::balance_manager::BalanceManagerContract;
-use crate::types::{OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions};
+use crate::types::{
+    OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions, SwapParams,
+};
 use crate::utils::config::{DEEP_SCALAR, DeepBookConfig, FLOAT_SCALAR, GAS_BUDGET, MAX_TIMESTAMP};
-use crate::utils::{get_object_arg, parse_type_input};
+use crate::utils::{get_coins_to_transfer, get_object_arg, parse_type_input};
 
 #[derive(Clone)]
 pub struct DeepBookContract {
@@ -53,20 +55,16 @@ impl DeepBookContract {
         let balance_manager = self
             .config
             .get_balance_manager(balance_manager_key.as_str());
-
         let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
             .await
             .context("Failed to get object argument for balance_manager")?;
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof(ptb, balance_manager_key)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -177,13 +175,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof(ptb, balance_manager_key)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -260,13 +255,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof(ptb, balance_manager_key)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -318,13 +310,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof(ptb, balance_manager_key)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -910,5 +899,84 @@ impl DeepBookContract {
         })));
 
         Ok(())
+    }
+
+    pub async fn swap_exact_base_for_quote(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        params: &SwapParams,
+    ) -> Result<(Argument, Argument, Argument)> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let SwapParams {
+            pool_key,
+            amount,
+            deep_amount,
+            min_out,
+        } = params;
+
+        let pool = self.config.get_pool(pool_key);
+
+        let base_coin = self.config.get_coin(&pool.base_coin);
+        let quote_coin = self.config.get_coin(&pool.quote_coin);
+        let deep_coin = self.config.get_coin("DEEP");
+        let pool_object = get_object_arg(&self.client, &pool.address)
+            .await
+            .context("Failed to get pool object argument")?;
+        let pool_object_arg = ptb.input(pool_object)?;
+
+        let amount_input = (amount * base_coin.scalar as f64).round() as u64;
+        let base_coin_input = get_coins_to_transfer(
+            &self.client,
+            ptb,
+            self.config.sender_address,
+            &base_coin.coin_type,
+            amount_input,
+        )
+        .await?;
+        let deep_amount_input = (deep_amount * deep_coin.scalar as f64).round() as u64;
+
+        let deep_coin_input = get_coins_to_transfer(
+            &self.client,
+            ptb,
+            self.config.sender_address,
+            &deep_coin.coin_type,
+            deep_amount_input,
+        )
+        .await?;
+        let min_out_input = ptb.pure((min_out * base_coin.scalar as f64).round() as u64)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
+        let swap_exact_base_for_quote =
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: package_id,
+                module: "pool".to_string(),
+                function: "swap_exact_base_for_quote".to_string(),
+                type_arguments: vec![
+                    parse_type_input(&base_coin.coin_type)?,
+                    parse_type_input(&quote_coin.coin_type)?,
+                ],
+                arguments: vec![
+                    pool_object_arg,
+                    base_coin_input,
+                    deep_coin_input,
+                    min_out_input,
+                    clock_arg,
+                ],
+            })));
+        let mut command_index: u16;
+        match swap_exact_base_for_quote {
+            Argument::Result(value) => {
+                command_index = value;
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Expected Result from borrow_flashloan_base",
+                ));
+            }
+        }
+        let base_coin_result = Argument::NestedResult(command_index, 0);
+        let quote_coin_result = Argument::NestedResult(command_index, 1);
+        let deep_coin_result = Argument::NestedResult(command_index, 2);
+        Ok((base_coin_result, quote_coin_result, deep_coin_result))
     }
 }

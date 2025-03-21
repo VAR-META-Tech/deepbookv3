@@ -2,7 +2,7 @@ mod test_helper;
 
 use anyhow::Result;
 use deepbookv3::types::{
-    OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions,
+    OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions, SwapParams,
 };
 use serial_test::serial;
 use sui_sdk::types::{
@@ -10,6 +10,7 @@ use sui_sdk::types::{
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{Command, TransactionData},
 };
+use sui_types::base_types::ObjectRef;
 use test_helper::{get_gas_coin, setup_client, sign_and_execute};
 use tokio::time::{Duration, sleep}; // Ensure `tokio` is used for async tests
 

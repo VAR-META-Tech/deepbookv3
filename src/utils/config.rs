@@ -11,6 +11,8 @@ use crate::utils::constants::{
     get_testnet_coins, get_testnet_pools,
 };
 
+use super::constants::{DEVNET_PACKAGE_IDS, get_devnet_coins, get_devnet_pools};
+
 pub const FLOAT_SCALAR: f64 = 1_000_000_000.0;
 pub const MAX_TIMESTAMP: u64 = 1_844_674_407_370_955_161;
 pub const GAS_BUDGET: f64 = 0.5 * 500_000_000.0; // Adjust based on benchmarking
@@ -57,7 +59,7 @@ impl DeepBookConfig {
                 }),
                 &MAINNET_PACKAGE_IDS,
             )
-        } else {
+        } else if env == "testnet" {
             (
                 coins.unwrap_or_else(|| {
                     get_testnet_coins()
@@ -73,6 +75,22 @@ impl DeepBookConfig {
                 }),
                 &TESTNET_PACKAGE_IDS,
             )
+        } else {
+            (
+                coins.unwrap_or_else(|| {
+                    get_devnet_coins()
+                        .into_iter()
+                        .map(|(k, v)| (k.to_string(), v))
+                        .collect()
+                }),
+                pools.unwrap_or_else(|| {
+                    get_devnet_pools()
+                        .into_iter()
+                        .map(|(k, v)| (k.to_string(), v))
+                        .collect()
+                }),
+                &DEVNET_PACKAGE_IDS,
+            )
         };
 
         Self {
@@ -80,9 +98,9 @@ impl DeepBookConfig {
             pools,
             balance_managers,
             sender_address: sender_address,
-            deepbook_package_id: package_ids.deepbook_package_id.clone().to_owned(),
-            registry_id: package_ids.registry_id.clone().to_owned(),
-            deep_treasury_id: package_ids.deep_treasury_id.clone().to_owned(),
+            deepbook_package_id: package_ids.deepbook_package_id.to_owned(),
+            registry_id: package_ids.registry_id.to_owned(),
+            deep_treasury_id: package_ids.deep_treasury_id.to_owned(),
             admin_cap,
             // balance_manager: BalanceManagerContract::new(),
         }
@@ -105,9 +123,4 @@ impl DeepBookConfig {
             .get(key)
             .expect(&format!("Balance manager with key {} not found.", key))
     }
-}
-
-fn normalize_sui_address(address: String) -> String {
-    // Placeholder function for address normalization
-    address.to_lowercase()
 }
