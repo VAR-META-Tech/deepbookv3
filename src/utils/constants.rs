@@ -60,7 +60,7 @@ pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
 pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
     HashMap::from([
         (
-            "DEEP_SUI",
+            "DEEP_SUI", // whitelisted pool
             Pool {
                 address: "0xfec71b6b2a00bfdb1e41acc43bbcd10c3f4d246973d39cb8bacee0366f79b5d9",
                 base_coin: "DEEP",
@@ -68,7 +68,7 @@ pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
             },
         ),
         (
-            "SUI_DBUSDC",
+            "SUI_DBUSDC", // whitelisted pool
             Pool {
                 address: "0x8b5052f0b83d692c7ee157f8a44d0a3b272f23257130a8b286c49e7fc830ef54",
                 base_coin: "SUI",
@@ -89,6 +89,14 @@ pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
                 address: "0x4241fb8f4b8965f8df5a8a80d9c42292d35b7b24d7f3831bb555ffe869337416",
                 base_coin: "DBUSDT",
                 quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DBUSDT_SUI", // added price deep point
+            Pool {
+                address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
+                base_coin: "DBUSDT",
+                quote_coin: "SUI",
             },
         ),
     ])
