@@ -54,6 +54,14 @@ pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
                 scalar: 1_000_000,
             },
         ),
+        (
+            "PI",
+            Coin {
+                address: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3",
+                coin_type: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3::pi::PI",
+                scalar: 1_000_000,
+            },
+        ),
     ])
 }
 
@@ -96,6 +104,14 @@ pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
             Pool {
                 address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
                 base_coin: "DBUSDT",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "PI_SUI",
+            Pool {
+                address: "0x4b4dbcbc7ae876e77accc279860a65775bacf73932963be1c3b433cd6e859c24",
+                base_coin: "PI",
                 quote_coin: "SUI",
             },
         ),

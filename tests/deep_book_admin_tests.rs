@@ -1,171 +1,178 @@
-// mod test_helper;
+mod test_helper;
 
-// use anyhow::Result;
-// use serial_test::serial;
-// use sui_sdk::types::base_types::SuiAddress;
-// use sui_sdk::types::transaction::TransactionData;
-// use test_helper::{get_gas_coin, setup_client, sign_and_execute};
-// use tokio::time::{Duration, sleep};
+use anyhow::Result;
+use serial_test::serial;
+use sui_sdk::types::base_types::SuiAddress;
+use sui_sdk::types::transaction::TransactionData;
+use sui_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use test_helper::{get_gas_coin, setup_client, sign_and_execute};
+use tokio::time::{Duration, sleep};
 
-// #[tokio::test]
-// #[serial]
-// async fn test_create_pool_admin() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
+#[tokio::test]
+#[serial]
+async fn test_create_pool_admin() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .create_pool_admin(&mut ptb, "PI", "SUI", 0.000001, 0.1, 1.0, true, false)
+        .await?;
 
-//     let pt = deep_book_client
-//         .deep_book_admin
-//         .create_pool_admin("USDC", "SUI", 0.01, 100.0, 10.0, true, false)
-//         .await?;
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-//     let gas_coin = get_gas_coin(&client, sender).await?;
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
+    sign_and_execute(&client, sender, tx_data).await?;
 
-//     sign_and_execute(&client, sender, tx_data).await?;
+    println!("✅ Pool creation test passed!");
+    Ok(())
+}
 
-//     println!("✅ Pool creation test passed!");
-//     Ok(())
-// }
+#[tokio::test]
+#[serial]
+async fn test_unregister_pool_admin() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .unregister_pool_admin(&mut ptb, "PI_SUI")
+        .await?;
 
-// #[tokio::test]
-// #[serial]
-// async fn test_unregister_pool_admin() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-//     let pt = deep_book_client
-//         .deep_book_admin
-//         .unregister_pool_admin("POOL_123")
-//         .await?;
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-//     let gas_coin = get_gas_coin(&client, sender).await?;
+    sign_and_execute(&client, sender, tx_data).await?;
 
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
+    println!("✅ Unregister pool test passed!");
+    Ok(())
+}
 
-//     sign_and_execute(&client, sender, tx_data).await?;
+#[tokio::test]
+#[serial]
+async fn test_update_allowed_versions() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .update_allowed_versions(&mut ptb, "PI_SUI")
+        .await?;
 
-//     println!("✅ Unregister pool test passed!");
-//     Ok(())
-// }
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-// #[tokio::test]
-// #[serial]
-// async fn test_update_allowed_versions() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-//     let pt = deep_book_client
-//         .deep_book_admin
-//         .update_allowed_versions("POOL_123")
-//         .await?;
+    sign_and_execute(&client, sender, tx_data).await?;
 
-//     let gas_coin = get_gas_coin(&client, sender).await?;
+    println!("✅ Update allowed versions test passed!");
+    Ok(())
+}
 
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
+#[tokio::test]
+#[serial]
+async fn test_enable_version() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .enable_version(&mut ptb, 3)
+        .await?;
 
-//     sign_and_execute(&client, sender, tx_data).await?;
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-//     println!("✅ Update allowed versions test passed!");
-//     Ok(())
-// }
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-// #[tokio::test]
-// #[serial]
-// async fn test_enable_version() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
+    sign_and_execute(&client, sender, tx_data).await?;
 
-//     let pt = deep_book_client.deep_book_admin.enable_version(2).await?;
+    println!("✅ Enable version test passed!");
+    Ok(())
+}
 
-//     let gas_coin = get_gas_coin(&client, sender).await?;
+#[tokio::test]
+#[serial]
+async fn test_disable_version() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .disable_version(&mut ptb, 3)
+        .await?;
 
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-//     sign_and_execute(&client, sender, tx_data).await?;
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-//     println!("✅ Enable version test passed!");
-//     Ok(())
-// }
+    sign_and_execute(&client, sender, tx_data).await?;
 
-// #[tokio::test]
-// #[serial]
-// async fn test_disable_version() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
+    println!("✅ Disable version test passed!");
+    Ok(())
+}
 
-//     let pt = deep_book_client.deep_book_admin.disable_version(2).await?;
+#[tokio::test]
+#[serial]
+async fn test_set_treasury_address() -> Result<()> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let treasury_address = SuiAddress::random_for_testing_only();
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    deep_book_client
+        .deep_book_admin
+        .set_treasury_address(&mut ptb, treasury_address)
+        .await?;
 
-//     let gas_coin = get_gas_coin(&client, sender).await?;
+    let gas_coin = get_gas_coin(&client, sender).await?;
 
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
+    let gas_budget = 5_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let tx_data = TransactionData::new_programmable(
+        sender,
+        vec![gas_coin],
+        ptb.finish(),
+        gas_budget,
+        gas_price,
+    );
 
-//     sign_and_execute(&client, sender, tx_data).await?;
+    sign_and_execute(&client, sender, tx_data).await?;
 
-//     println!("✅ Disable version test passed!");
-//     Ok(())
-// }
-
-// #[tokio::test]
-// #[serial]
-// async fn test_set_treasury_address() -> Result<()> {
-//     let (client, sender, deep_book_client) = setup_client().await?;
-//     let treasury_address = SuiAddress::random_for_testing_only();
-
-//     let pt = deep_book_client
-//         .deep_book_admin
-//         .set_treasury_address(treasury_address)
-//         .await?;
-
-//     let gas_coin = get_gas_coin(&client, sender).await?;
-
-//     let gas_budget = 5_000_000;
-//     let gas_price = client.read_api().get_reference_gas_price().await?;
-//     let tx_data = TransactionData::new_programmable(
-//         sender,
-//         vec![gas_coin],
-//         pt.finish(),
-//         gas_budget,
-//         gas_price,
-//     );
-
-//     sign_and_execute(&client, sender, tx_data).await?;
-
-//     println!("✅ Set treasury address test passed!");
-//     Ok(())
-// }
+    println!("✅ Set treasury address test passed!");
+    Ok(())
+}
