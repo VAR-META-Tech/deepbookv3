@@ -246,7 +246,7 @@ impl BalanceManagerContract {
     }
 
     /// Generate a trade proof as the owner
-    async fn generate_proof_as_owner(
+    pub async fn generate_proof_as_owner(
         &self,
         ptb: &mut ProgrammableTransactionBuilder,
         manager_id: &str,

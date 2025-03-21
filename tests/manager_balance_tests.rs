@@ -76,7 +76,7 @@ async fn test_deposit_to_manager() -> Result<()> {
 
     deep_book_client
         .balance_manager
-        .deposit_into_manager(&mut ptb, "MANAGER_2", "SUI", 2.1)
+        .deposit_into_manager(&mut ptb, "MANAGER_2", "DEEP", 1000.1)
         .await?;
     let gas_coins = client
         .coin_read_api()
@@ -88,7 +88,7 @@ async fn test_deposit_to_manager() -> Result<()> {
         .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
         .collect();
 
-    let gas_budget = 1_000_000;
+    let gas_budget = 5_000_000;
     let gas_price = client.read_api().get_reference_gas_price().await?;
     let tx_data: TransactionData = TransactionData::new_programmable(
         sender,

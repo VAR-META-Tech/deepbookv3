@@ -38,7 +38,8 @@ pub async fn setup_client() -> Result<(SuiClient, SuiAddress, DeepBookClient)> {
     let balance_managers = HashMap::from([(
         "MANAGER_2".to_string(),
         BalanceManager {
-            address: "0x08933685e0246a2ddae2f5e5628fdeba09de831cadf5ad949db308807f18bee5",
+            // address: "0x08933685e0246a2ddae2f5e5628fdeba09de831cadf5ad949db308807f18bee5", // balance_manager for testnet
+            address: "0x73e7bc2f1007a4f1ffcc42af9305e4e7ce16274297e2e513b2503b9c85c287d4", // balance_manager for devnet
             trade_cap: None,
         },
     )]);
@@ -46,7 +47,7 @@ pub async fn setup_client() -> Result<(SuiClient, SuiAddress, DeepBookClient)> {
     let deep_book_client = DeepBookClient::new(
         client.clone(),
         sender,
-        "testnet",
+        "devnet",
         Some(balance_managers),
         None,
         None,

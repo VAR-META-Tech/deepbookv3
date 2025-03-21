@@ -11,6 +11,8 @@ use crate::utils::constants::{
     get_testnet_coins, get_testnet_pools,
 };
 
+use super::constants::{DEVNET_PACKAGE_IDS, get_devnet_coins, get_devnet_pools};
+
 pub const FLOAT_SCALAR: f64 = 1_000_000_000.0;
 pub const MAX_TIMESTAMP: u64 = 1_844_674_407_370_955_161;
 pub const GAS_BUDGET: f64 = 0.5 * 500_000_000.0; // Adjust based on benchmarking
@@ -57,7 +59,7 @@ impl DeepBookConfig {
                 }),
                 &MAINNET_PACKAGE_IDS,
             )
-        } else {
+        } else if env == "testnet" {
             (
                 coins.unwrap_or_else(|| {
                     get_testnet_coins()
@@ -72,6 +74,22 @@ impl DeepBookConfig {
                         .collect()
                 }),
                 &TESTNET_PACKAGE_IDS,
+            )
+        } else {
+            (
+                coins.unwrap_or_else(|| {
+                    get_devnet_coins()
+                        .into_iter()
+                        .map(|(k, v)| (k.to_string(), v))
+                        .collect()
+                }),
+                pools.unwrap_or_else(|| {
+                    get_devnet_pools()
+                        .into_iter()
+                        .map(|(k, v)| (k.to_string(), v))
+                        .collect()
+                }),
+                &DEVNET_PACKAGE_IDS,
             )
         };
 

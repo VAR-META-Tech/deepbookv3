@@ -53,20 +53,16 @@ impl DeepBookContract {
         let balance_manager = self
             .config
             .get_balance_manager(balance_manager_key.as_str());
-
         let balance_manager_object = get_object_arg(&self.client, balance_manager.address)
             .await
             .context("Failed to get object argument for balance_manager")?;
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof_as_owner(ptb, balance_manager.address)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -177,13 +173,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof_as_owner(ptb, balance_manager.address)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -260,13 +253,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof_as_owner(ptb, balance_manager.address)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
@@ -318,13 +308,10 @@ impl DeepBookContract {
 
         let balance_manager_arg = ptb.input(balance_manager_object)?;
 
-        let trade_proof = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-            package: package_id,
-            module: "balance_manager".to_string(),
-            function: "generate_proof_as_owner".to_string(),
-            arguments: vec![balance_manager_arg],
-            type_arguments: vec![],
-        })));
+        let trade_proof = self
+            .balance_manager
+            .generate_proof_as_owner(ptb, balance_manager.address)
+            .await?;
 
         let pools = self.config.get_pool(pool_key);
         let base_coin = self.config.get_coin(pools.base_coin);
