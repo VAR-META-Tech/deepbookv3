@@ -65,87 +65,6 @@ pub async fn get_object_arg(client: &SuiClient, object_id: &str) -> Result<CallA
     }
 }
 
-/// Fetches a coin object with at least the required balance
-pub async fn get_exact_coin(
-    client: &SuiClient,
-    owner: SuiAddress,
-    coin_type: &str,
-    amount: u64,
-    ptb: &mut ProgrammableTransactionBuilder,
-) -> Result<Argument> {
-    let coins = client
-        .coin_read_api()
-        .get_coins(owner, Some(coin_type.to_string()), None, None)
-        .await
-        .context(format!("Failed to fetch coins for type {}", coin_type))?
-        .data;
-
-    // Find a coin that can cover the exact amount
-    let coin = coins
-        .iter()
-        .find(|c| c.balance >= amount)
-        .ok_or_else(|| anyhow!("No suitable coin found with required amount: {}", amount))?;
-
-    let coin_ref = (coin.coin_object_id, coin.version, coin.digest);
-    let coin_arg = ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject(coin_ref)))?;
-    // Split the coin if it has more balance than required
-    let exact_coin = if coin.balance > amount {
-        let split_amount = ptb.input(CallArg::Pure(bcs::to_bytes(&amount)?))?;
-        let split_coin = ptb.command(Command::SplitCoins(coin_arg, vec![split_amount]));
-        println!("split_coin: {:?}", split_coin);
-
-        split_coin
-    } else {
-        coin_arg
-    };
-
-    Ok(exact_coin)
-}
-
-pub async fn get_coins_to_transfer(
-    client: &SuiClient,
-    ptb: &mut ProgrammableTransactionBuilder,
-    owner: SuiAddress,
-    coin_type: &str,
-    amount: u64,
-) -> Result<Argument> {
-    if coin_type != "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI" {
-        let coins = client
-            .coin_read_api()
-            .get_coins(owner, Some(coin_type.to_string()), None, None)
-            .await
-            .context(format!("Failed to fetch coins for type {}", coin_type))?
-            .data;
-
-        // merge coins
-        let mut coin_arguments: Vec<Argument> = coins
-            .iter()
-            .map(|coin| {
-                ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject((
-                    coin.coin_object_id,
-                    coin.version,
-                    coin.digest,
-                ))))
-                .expect("Failed to create input")
-            })
-            .collect();
-
-        let merge_coins = coin_arguments.remove(0);
-        if coins.len() > 1 {
-            ptb.command(Command::MergeCoins(merge_coins, coin_arguments));
-        }
-        // Split the coin from merge_coins
-        let split_amount = ptb.pure(amount)?;
-        let split_coin = ptb.command(Command::SplitCoins(merge_coins, vec![split_amount]));
-        Ok(split_coin)
-    } else {
-        // Split the coin from gas_coins
-        let split_amount = ptb.pure(amount)?;
-        let split_coin = ptb.command(Command::SplitCoins(Argument::GasCoin, vec![split_amount]));
-        Ok(split_coin)
-    }
-}
-
 pub async fn get_clock_object_arg(client: &SuiClient) -> Result<CallArg, anyhow::Error> {
     let object_response: SuiObjectResponse = client
         .read_api()
@@ -176,4 +95,87 @@ pub async fn get_clock_object_arg(client: &SuiClient) -> Result<CallArg, anyhow:
     };
 
     Ok(res)
+}
+
+pub async fn merge_and_split_coins(
+    client: &SuiClient,
+    ptb: &mut ProgrammableTransactionBuilder,
+    owner: SuiAddress,
+    coin_type: &str,
+    amounts: Vec<u64>, // Accept a list of amounts
+) -> Result<Vec<Argument>> {
+    if coin_type != "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI" {
+        let coins = client
+            .coin_read_api()
+            .get_coins(owner, Some(coin_type.to_string()), None, None)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to fetch coins for type {} from {}",
+                    coin_type, owner
+                )
+            })?
+            .data;
+
+        if coins.is_empty() {
+            return Err(anyhow::anyhow!(
+                "❌ No coins found for type {} under address {}",
+                coin_type,
+                owner
+            ));
+        }
+
+        // Create input arguments
+        let mut coin_arguments: Vec<Argument> = coins
+            .iter()
+            .map(|coin| {
+                ptb.input(CallArg::Object(ObjectArg::ImmOrOwnedObject((
+                    coin.coin_object_id,
+                    coin.version,
+                    coin.digest,
+                ))))
+                .expect("❌ Failed to create input from coin object")
+            })
+            .collect();
+
+        let merge_target = coin_arguments.remove(0);
+
+        if !coin_arguments.is_empty() {
+            println!("🔀 Merging {} coins into one...", coin_arguments.len() + 1);
+            ptb.command(Command::MergeCoins(merge_target, coin_arguments));
+        } else {
+            println!("ℹ️ Only one coin available, skipping merge.");
+        }
+
+        // Convert amounts to pure arguments
+        let amount_args: Result<Vec<Argument>> = amounts.iter().map(|amt| ptb.pure(*amt)).collect();
+        let amount_args = amount_args?;
+
+        // Split coins
+        let split_result = ptb.command(Command::SplitCoins(merge_target, amount_args));
+
+        match split_result {
+            Argument::Result(idx) => {
+                let outputs = (0..amounts.len())
+                    .map(|i| Argument::NestedResult(idx, i as u16))
+                    .collect::<Vec<_>>();
+                Ok(outputs)
+            }
+            _ => Err(anyhow::anyhow!("Expected Result from SplitCoins")),
+        }
+    } else {
+        // Use GasCoin for SUI
+        println!("⚙️ Using GasCoin for SUI transfer.");
+        let amount_args: Result<Vec<Argument>> = amounts.iter().map(|amt| ptb.pure(*amt)).collect();
+        let split_result = ptb.command(Command::SplitCoins(Argument::GasCoin, amount_args?));
+        match split_result {
+            Argument::Result(idx) => {
+                let outputs = (0..amounts.len())
+                    .map(|i| Argument::NestedResult(idx, i as u16))
+                    .collect::<Vec<_>>();
+                Ok(outputs)
+            }
+            _ => Err(anyhow::anyhow!("Expected Result from SplitCoins (GasCoin)")),
+        }
+    }
 }

@@ -10,7 +10,7 @@ use crate::types::{
     OrderType, PlaceLimitOrderParams, PlaceMarketOrderParams, SelfMatchingOptions, SwapParams,
 };
 use crate::utils::config::{DEEP_SCALAR, DeepBookConfig, FLOAT_SCALAR, GAS_BUDGET, MAX_TIMESTAMP};
-use crate::utils::{get_coins_to_transfer, get_object_arg, parse_type_input};
+use crate::utils::{get_object_arg, merge_and_split_coins, parse_type_input};
 
 #[derive(Clone)]
 pub struct DeepBookContract {
@@ -910,73 +910,208 @@ impl DeepBookContract {
 
         let SwapParams {
             pool_key,
-            amount,
-            deep_amount,
-            min_out,
+            amount,      // base amount to input
+            deep_amount, // deep token to burn
+            min_out,     // expected min quote output
         } = params;
 
         let pool = self.config.get_pool(pool_key);
-
         let base_coin = self.config.get_coin(&pool.base_coin);
         let quote_coin = self.config.get_coin(&pool.quote_coin);
         let deep_coin = self.config.get_coin("DEEP");
+
+        // Get pool object
         let pool_object = get_object_arg(&self.client, &pool.address)
             .await
             .context("Failed to get pool object argument")?;
         let pool_object_arg = ptb.input(pool_object)?;
 
-        let amount_input = (amount * base_coin.scalar as f64).round() as u64;
-        let base_coin_input = get_coins_to_transfer(
-            &self.client,
-            ptb,
-            self.config.sender_address,
-            &base_coin.coin_type,
-            amount_input,
-        )
-        .await?;
+        let base_amount_input = (amount * base_coin.scalar as f64).round() as u64;
         let deep_amount_input = (deep_amount * deep_coin.scalar as f64).round() as u64;
 
-        let deep_coin_input = get_coins_to_transfer(
-            &self.client,
-            ptb,
-            self.config.sender_address,
-            &deep_coin.coin_type,
-            deep_amount_input,
-        )
-        .await?;
-        let min_out_input = ptb.pure((min_out * base_coin.scalar as f64).round() as u64)?;
+        let (base_coin_input, deep_coin_input) = if base_coin.coin_type == deep_coin.coin_type {
+            let split_coins = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &base_coin.coin_type,
+                vec![base_amount_input, deep_amount_input],
+            )
+            .await?;
+
+            let base_coin_input = split_coins[0];
+            let deep_coin_input = split_coins[1];
+
+            (base_coin_input, deep_coin_input)
+        } else {
+            let base_coin_input = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &base_coin.coin_type,
+                vec![base_amount_input],
+            )
+            .await?
+            .remove(0);
+
+            let deep_coin_input = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &deep_coin.coin_type,
+                vec![deep_amount_input],
+            )
+            .await?
+            .remove(0);
+
+            (base_coin_input, deep_coin_input)
+        };
+
+        // Min quote out (should use quote coin scalar!)
+        let min_out_input = ptb.pure((min_out * quote_coin.scalar as f64).round() as u64)?;
+
+        // Clock arg
         let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
-        let swap_exact_base_for_quote =
-            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-                package: package_id,
-                module: "pool".to_string(),
-                function: "swap_exact_base_for_quote".to_string(),
-                type_arguments: vec![
-                    parse_type_input(&base_coin.coin_type)?,
-                    parse_type_input(&quote_coin.coin_type)?,
-                ],
-                arguments: vec![
-                    pool_object_arg,
-                    base_coin_input,
-                    deep_coin_input,
-                    min_out_input,
-                    clock_arg,
-                ],
-            })));
-        let mut command_index: u16;
-        match swap_exact_base_for_quote {
-            Argument::Result(value) => {
-                command_index = value;
-            }
+
+        // Build move call
+        let swap_call = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "swap_exact_base_for_quote".to_string(),
+            type_arguments: vec![
+                parse_type_input(&base_coin.coin_type)?,
+                parse_type_input(&quote_coin.coin_type)?,
+            ],
+            arguments: vec![
+                pool_object_arg,
+                base_coin_input,
+                deep_coin_input,
+                min_out_input,
+                clock_arg,
+            ],
+        })));
+
+        // Handle result
+        let command_index = match swap_call {
+            Argument::Result(index) => index,
             _ => {
                 return Err(anyhow::anyhow!(
-                    "Expected Result from borrow_flashloan_base",
+                    "Expected Argument::Result from swap_exact_base_for_quote"
                 ));
             }
-        }
+        };
+
         let base_coin_result = Argument::NestedResult(command_index, 0);
         let quote_coin_result = Argument::NestedResult(command_index, 1);
         let deep_coin_result = Argument::NestedResult(command_index, 2);
+
+        Ok((base_coin_result, quote_coin_result, deep_coin_result))
+    }
+
+    pub async fn swap_exact_quote_for_base(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        params: &SwapParams,
+    ) -> Result<(Argument, Argument, Argument)> {
+        let package_id = ObjectID::from_hex_literal(&self.config.deepbook_package_id)?;
+
+        let SwapParams {
+            pool_key,
+            amount, // this is quoteAmount
+            deep_amount,
+            min_out, // this is minBase
+        } = params;
+
+        let pool = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(&pool.base_coin);
+        let quote_coin = self.config.get_coin(&pool.quote_coin);
+        let deep_coin = self.config.get_coin("DEEP");
+
+        let pool_object = get_object_arg(&self.client, &pool.address)
+            .await
+            .context("Failed to get pool object argument")?;
+        let pool_object_arg = ptb.input(pool_object)?;
+
+        let quote_amount_input = (amount * quote_coin.scalar as f64).round() as u64;
+        let deep_amount_input = (deep_amount * deep_coin.scalar as f64).round() as u64;
+
+        let (quote_coin_input, deep_coin_input) = if quote_coin.coin_type == deep_coin.coin_type {
+            let split_coins = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &quote_coin.coin_type,
+                vec![quote_amount_input, deep_amount_input],
+            )
+            .await?;
+
+            let quote_coin_input = split_coins[0];
+            let deep_coin_input = split_coins[1];
+            (quote_coin_input, deep_coin_input)
+        } else {
+            let quote_coin_input = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &quote_coin.coin_type,
+                vec![quote_amount_input],
+            )
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get split coin for quote amount"))?;
+
+            let deep_coin_input = merge_and_split_coins(
+                &self.client,
+                ptb,
+                self.config.sender_address,
+                &deep_coin.coin_type,
+                vec![deep_amount_input],
+            )
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get split coin for quote amount"))?;
+
+            (quote_coin_input, deep_coin_input)
+        };
+
+        let min_base_input = ptb.pure((min_out * base_coin.scalar as f64).round() as u64)?;
+        let clock_arg = ptb.input(CallArg::CLOCK_IMM)?;
+
+        let swap_call = ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: package_id,
+            module: "pool".to_string(),
+            function: "swap_exact_quote_for_base".to_string(),
+            type_arguments: vec![
+                parse_type_input(&base_coin.coin_type)?,
+                parse_type_input(&quote_coin.coin_type)?,
+            ],
+            arguments: vec![
+                pool_object_arg,
+                quote_coin_input,
+                deep_coin_input,
+                min_base_input,
+                clock_arg,
+            ],
+        })));
+
+        println!("{}", swap_call);
+
+        // Extract results from the move call
+        let command_index = match swap_call {
+            Argument::Result(index) => index,
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Expected Argument::Result from swap_exact_quote_for_base"
+                ));
+            }
+        };
+
+        let base_coin_result = Argument::NestedResult(command_index, 0);
+        let quote_coin_result = Argument::NestedResult(command_index, 1);
+        let deep_coin_result = Argument::NestedResult(command_index, 2);
+
         Ok((base_coin_result, quote_coin_result, deep_coin_result))
     }
 }

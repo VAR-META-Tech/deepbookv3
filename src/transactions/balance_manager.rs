@@ -14,8 +14,8 @@ use sui_sdk::types::{
 };
 
 use crate::utils::config::DeepBookConfig;
-use crate::utils::{get_coins_to_transfer, get_object_arg};
-use crate::utils::{get_exact_coin, parse_type_input};
+use crate::utils::get_object_arg;
+use crate::utils::{merge_and_split_coins, parse_type_input};
 
 #[derive(Clone)]
 pub struct BalanceManagerContract {
@@ -156,15 +156,17 @@ impl BalanceManagerContract {
         let deposit_input = (amount_to_deposit * coin.scalar as f64) as u64;
 
         // Get an exact coin object for deposit
-
-        let coin_arg = get_coins_to_transfer(
+        let coin_arg = merge_and_split_coins(
             &self.client,
             ptb,
             self.config.sender_address,
             &coin.coin_type,
-            deposit_input,
+            vec![deposit_input],
         )
-        .await?;
+        .await?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get coin argument from split result"))?;
 
         // Get manager object
         let manager_object = get_object_arg(&self.client, &manager_id)

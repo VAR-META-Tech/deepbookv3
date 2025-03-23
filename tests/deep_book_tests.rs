@@ -263,7 +263,7 @@ async fn test_get_pool_deep_price() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
     // Act: Fetch deep price for the pool
-    let data = deep_book_client.get_pool_deep_price("SUI_DBUSDC").await?;
+    let data = deep_book_client.get_pool_deep_price("DBUSDT_SUI").await?;
 
     // Debugging Output
     println!("Pool Deep Price Data: {:?}", data);
@@ -525,7 +525,7 @@ async fn test_get_whitelisted_status() -> Result<()> {
 async fn test_get_mid_price() -> Result<()> {
     let (_client, _sender, deep_book_client) = setup_client().await?;
 
-    let pool_key = "SUI_DBUSDC"; // Replace with a real pool key
+    let pool_key = "DBUSDT_SUI"; // Replace with a real pool key
 
     let mid_price = deep_book_client.get_mid_price(pool_key).await?;
 
@@ -536,5 +536,106 @@ async fn test_get_mid_price() -> Result<()> {
     assert!(mid_price > 0, "Mid price should be greater than 0");
 
     println!("✅ Test passed: get_mid_price returns a valid value.");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_swap_exact_base_for_quote() -> Result<(), anyhow::Error> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+
+    let (base_coin_result, quote_coin_result, deep_coin_result) = deep_book_client
+        .deep_book
+        .swap_exact_base_for_quote(
+            &mut ptb,
+            &SwapParams {
+                pool_key: "DBUSDT_SUI".to_string(),
+                amount: 1.1,
+                deep_amount: 5.0,
+                min_out: 0.01,
+            },
+        )
+        .await?;
+
+    ptb.transfer_args(
+        sender,
+        vec![base_coin_result, quote_coin_result, deep_coin_result],
+    );
+
+    let gas_coins = client
+        .coin_read_api()
+        .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
+        .await?
+        .data;
+
+    let gas_object_refs: Vec<ObjectRef> = gas_coins
+        .iter()
+        .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
+        .collect();
+
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let pt = ptb.finish();
+
+    let tx_data =
+        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("✅ Swap transaction succeeded: {:?}", transaction_response);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_swap_exact_quote_for_base() -> Result<(), anyhow::Error> {
+    let (client, sender, deep_book_client) = setup_client().await?;
+    let mut ptb = ProgrammableTransactionBuilder::new();
+
+    let (base_coin_result, quote_coin_result, deep_coin_result) = deep_book_client
+        .deep_book
+        .swap_exact_quote_for_base(
+            &mut ptb,
+            &SwapParams {
+                pool_key: "DBUSDT_SUI".to_string(),
+                amount: 2.5,      // Quote amount (e.g., DBUSDT)
+                deep_amount: 5.0, // DEEP tokens burned
+                min_out: 0.5,     // Expected min base out (e.g., SUI)
+            },
+        )
+        .await?;
+
+    ptb.transfer_args(
+        sender,
+        vec![base_coin_result, quote_coin_result, deep_coin_result],
+    );
+
+    let gas_coins = client
+        .coin_read_api()
+        .get_coins(sender, Some("0x2::sui::SUI".to_string()), None, None)
+        .await?
+        .data;
+
+    let gas_object_refs: Vec<ObjectRef> = gas_coins
+        .iter()
+        .map(|coin| (coin.coin_object_id, coin.version, coin.digest))
+        .collect();
+
+    let gas_budget = 50_000_000;
+    let gas_price = client.read_api().get_reference_gas_price().await?;
+    let pt = ptb.finish();
+
+    println!("📜 Commands for swap_exact_quote_for_base:");
+    for (i, cmd) in pt.commands.iter().enumerate() {
+        println!("  [{}] {:?}", i, cmd);
+    }
+
+    let tx_data =
+        TransactionData::new_programmable(sender, gas_object_refs, pt, gas_budget, gas_price);
+
+    println!("🚀 Signing and executing quote-for-base swap transaction...");
+    let transaction_response = sign_and_execute(&client, sender, tx_data).await?;
+
+    println!("✅ Transaction response: {:?}", transaction_response);
+
     Ok(())
 }
