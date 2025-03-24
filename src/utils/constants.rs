@@ -54,14 +54,6 @@ pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
                 scalar: 1_000_000,
             },
         ),
-        (
-            "PI",
-            Coin {
-                address: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3",
-                coin_type: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3::pi::PI",
-                scalar: 1_000_000,
-            },
-        ),
     ])
 }
 
@@ -76,17 +68,17 @@ pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
             },
         ),
         (
-            "SUI_DBUSDC", // whitelisted pool
+            "SUI_DBUSDC",
             Pool {
-                address: "0x8b5052f0b83d692c7ee157f8a44d0a3b272f23257130a8b286c49e7fc830ef54",
+                address: "0x618a0bfedc99bafac428c5a37c61ad24a24cb6cd422847c9be68ea7bffc93134",
                 base_coin: "SUI",
                 quote_coin: "DBUSDC",
             },
         ),
         (
-            "DEEP_DBUSDC",
+            "DEEP_DBUSDC", // whitelisted pool
             Pool {
-                address: "0x3571bfb4cad9fac64d489a5f1b6b91c66dfc9f21022d65b374a02903c1f2d474",
+                address: "0xc27a858ea9f33c7281af3a2d97d35f7f141046e038e3c97d0adcf9c8bb381207",
                 base_coin: "DEEP",
                 quote_coin: "DBUSDC",
             },
@@ -97,22 +89,6 @@ pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
                 address: "0x4241fb8f4b8965f8df5a8a80d9c42292d35b7b24d7f3831bb555ffe869337416",
                 base_coin: "DBUSDT",
                 quote_coin: "DBUSDC",
-            },
-        ),
-        (
-            "DBUSDT_SUI", // added price deep point
-            Pool {
-                address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
-                base_coin: "DBUSDT",
-                quote_coin: "SUI",
-            },
-        ),
-        (
-            "PI_SUI",
-            Pool {
-                address: "0x4b4dbcbc7ae876e77accc279860a65775bacf73932963be1c3b433cd6e859c24",
-                base_coin: "PI",
-                quote_coin: "SUI",
             },
         ),
     ])

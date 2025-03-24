@@ -525,7 +525,7 @@ async fn test_get_whitelisted_status() -> Result<()> {
 async fn test_get_mid_price() -> Result<()> {
     let (_client, _sender, deep_book_client) = setup_client().await?;
 
-    let pool_key = "DBUSDT_SUI"; // Replace with a real pool key
+    let pool_key = "DBUSDT_DBUSDC"; // Replace with a real pool key
 
     let mid_price = deep_book_client.get_mid_price(pool_key).await?;
 
@@ -549,7 +549,7 @@ async fn test_swap_exact_base_for_quote() -> Result<(), anyhow::Error> {
         .swap_exact_base_for_quote(
             &mut ptb,
             &SwapParams {
-                pool_key: "DBUSDT_SUI".to_string(),
+                pool_key: "DBUSDT_DBUSDC".to_string(),
                 amount: 1.1,
                 deep_amount: 5.0,
                 min_out: 0.01,
@@ -596,7 +596,7 @@ async fn test_swap_exact_quote_for_base() -> Result<(), anyhow::Error> {
         .swap_exact_quote_for_base(
             &mut ptb,
             &SwapParams {
-                pool_key: "DBUSDT_SUI".to_string(),
+                pool_key: "DBUSDT_DBUSDC".to_string(),
                 amount: 2.5,      // Quote amount (e.g., DBUSDT)
                 deep_amount: 5.0, // DEEP tokens burned
                 min_out: 0.5,     // Expected min base out (e.g., SUI)

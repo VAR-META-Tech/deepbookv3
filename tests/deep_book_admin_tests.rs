@@ -17,7 +17,7 @@ async fn test_create_pool_admin() -> Result<()> {
     let mut ptb = ProgrammableTransactionBuilder::new();
     deep_book_client
         .deep_book_admin
-        .create_pool_admin(&mut ptb, "PI", "SUI", 0.000001, 0.1, 1.0, true, false)
+        .create_pool_admin(&mut ptb, "DEEP", "DBUSDC", 0.000001, 0.1, 1.0, true, false)
         .await?;
 
     let gas_coin = get_gas_coin(&client, sender).await?;
@@ -45,7 +45,7 @@ async fn test_unregister_pool_admin() -> Result<()> {
     let mut ptb = ProgrammableTransactionBuilder::new();
     deep_book_client
         .deep_book_admin
-        .unregister_pool_admin(&mut ptb, "PI_SUI")
+        .unregister_pool_admin(&mut ptb, "DEEP_DBUSDC")
         .await?;
 
     let gas_coin = get_gas_coin(&client, sender).await?;
