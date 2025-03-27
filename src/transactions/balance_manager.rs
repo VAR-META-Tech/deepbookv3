@@ -1,6 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::str::FromStr;
+
 use anyhow::{Context, Ok, Result, anyhow};
 use sui_sdk::SuiClient;
 use sui_sdk::rpc_types::{SuiObjectDataOptions, SuiObjectResponse};
@@ -301,6 +303,140 @@ impl BalanceManagerContract {
                 arguments: vec![manager_input, trade_cap_input],
             }))),
         )
+    }
+
+    pub async fn mint_trade_cap(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_key: &str,
+    ) -> Result<Argument> {
+        let manager = self.config.get_balance_manager(manager_key);
+        let manager_arg = ptb.input(get_object_arg(&self.client, &manager.address).await?)?;
+        Ok(
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+                module: "balance_manager".to_string(),
+                function: "mint_trade_cap".to_string(),
+                type_arguments: vec![],
+                arguments: vec![manager_arg],
+            }))),
+        )
+    }
+
+    pub async fn mint_deposit_cap(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_key: &str,
+    ) -> Result<Argument> {
+        let manager = self.config.get_balance_manager(manager_key);
+        let manager_arg = ptb.input(get_object_arg(&self.client, &manager.address).await?)?;
+        Ok(
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+                module: "balance_manager".to_string(),
+                function: "mint_deposit_cap".to_string(),
+                type_arguments: vec![],
+                arguments: vec![manager_arg],
+            }))),
+        )
+    }
+
+    pub async fn mint_withdraw_cap(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_key: &str,
+    ) -> Result<Argument> {
+        let manager = self.config.get_balance_manager(manager_key);
+        let manager_arg = ptb.input(get_object_arg(&self.client, &manager.address).await?)?;
+        Ok(
+            ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+                package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+                module: "balance_manager".to_string(),
+                function: "mint_withdraw_cap".to_string(),
+                type_arguments: vec![],
+                arguments: vec![manager_arg],
+            }))),
+        )
+    }
+
+    pub async fn deposit_with_cap(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_key: &str,
+        coin_key: &str,
+        amount: f64,
+    ) -> Result<()> {
+        let manager = self.config.get_balance_manager(manager_key);
+        let coin = self.config.get_coin(coin_key);
+
+        let deposit_input = (amount * coin.scalar as f64).round() as u64;
+
+        let manager_arg = ptb.input(get_object_arg(&self.client, &manager.address).await?)?;
+        let deposit_cap_arg = ptb.input(
+            get_object_arg(
+                &self.client,
+                manager.deposit_cap.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!("DepositCap not set for manager {}", manager_key)
+                })?,
+            )
+            .await?,
+        )?;
+
+        let coin_arg = merge_and_split_coins(
+            &self.client,
+            ptb,
+            self.config.sender_address,
+            &coin.coin_type,
+            vec![deposit_input],
+        )
+        .await?
+        .remove(0);
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+            module: "balance_manager".to_string(),
+            function: "deposit_with_cap".to_string(),
+            type_arguments: vec![parse_type_input(&coin.coin_type)?],
+            arguments: vec![manager_arg, deposit_cap_arg, coin_arg],
+        })));
+
+        Ok(())
+    }
+
+    pub async fn withdraw_with_cap(
+        &self,
+        ptb: &mut ProgrammableTransactionBuilder,
+        manager_key: &str,
+        coin_key: &str,
+        amount: f64,
+    ) -> Result<()> {
+        let manager = self.config.get_balance_manager(manager_key);
+        let coin = self.config.get_coin(coin_key);
+
+        let withdraw_amount = (amount * coin.scalar as f64).round() as u64;
+
+        let manager_arg = ptb.input(get_object_arg(&self.client, &manager.address).await?)?;
+        let withdraw_cap_arg = ptb.input(
+            get_object_arg(
+                &self.client,
+                manager.withdraw_cap.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!("WithdrawCap not set for manager {}", manager_key)
+                })?,
+            )
+            .await?,
+        )?;
+
+        let amount_arg = ptb.pure(withdraw_amount)?;
+
+        ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+            package: ObjectID::from_hex_literal(&self.config.deepbook_package_id)?,
+            module: "balance_manager".to_string(),
+            function: "withdraw_with_cap".to_string(),
+            type_arguments: vec![parse_type_input(&coin.coin_type)?],
+            arguments: vec![manager_arg, withdraw_cap_arg, amount_arg],
+        })));
+
+        Ok(())
     }
 
     pub async fn get_manager_owner(

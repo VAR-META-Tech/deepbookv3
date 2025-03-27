@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 use crate::types::{Coin, DeepbookPackageIds, Pool};
 
+pub const DEVNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
+    deepbook_package_id: "0xfd76b488f541a06c8747f5932624a411049ee1b89c2370ee042ff39d9c3aa643",
+    registry_id: "0xe4ab9ec40cc71134d41360e0981cf6e32ba95e305e24ab105fecb197b8bef831",
+    deep_treasury_id: "0x225de6ef76c5dd60b65a7e7724dedfa448276b2be0d95f0b540736d4d9a84755",
+};
+
 pub const TESTNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
     deepbook_package_id: "0xcbf4748a965d469ea3a36cf0ccc5743b96c2d0ae6dee0762ed3eca65fac07f7e",
     registry_id: "0x98dace830ebebd44b7a3331c00750bf758f8a4b17a27380f5bb3fbe68cb984a7",
@@ -12,12 +18,6 @@ pub const MAINNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
     deepbook_package_id: "0x2c8d603bc51326b8c13cef9dd07031a408a48dddb541963357661df5d3204809",
     registry_id: "0xaf16199a2dff736e9f07a845f23c5da6df6f756eddb631aed9d24a93efc4549d",
     deep_treasury_id: "0x032abf8948dda67a271bcc18e776dbbcfb0d58c8d288a700ff0d5521e57a1ffe",
-};
-
-pub const DEVNET_PACKAGE_IDS: DeepbookPackageIds = DeepbookPackageIds {
-    deepbook_package_id: "0xfd76b488f541a06c8747f5932624a411049ee1b89c2370ee042ff39d9c3aa643",
-    registry_id: "0xe4ab9ec40cc71134d41360e0981cf6e32ba95e305e24ab105fecb197b8bef831",
-    deep_treasury_id: "0x225de6ef76c5dd60b65a7e7724dedfa448276b2be0d95f0b540736d4d9a84755",
 };
 
 pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
@@ -60,59 +60,6 @@ pub fn get_devnet_coins() -> HashMap<&'static str, Coin> {
                 address: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3",
                 coin_type: "0xda3b5dddd274ee7b20de20c5556574f762a6ddc29af8e35a13f91bc60d3e01d3::pi::PI",
                 scalar: 1_000_000,
-            },
-        ),
-    ])
-}
-
-pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
-    HashMap::from([
-        (
-            "DEEP_SUI", // whitelisted pool
-            Pool {
-                address: "0xfec71b6b2a00bfdb1e41acc43bbcd10c3f4d246973d39cb8bacee0366f79b5d9",
-                base_coin: "DEEP",
-                quote_coin: "SUI",
-            },
-        ),
-        (
-            "SUI_DBUSDC", // whitelisted pool
-            Pool {
-                address: "0x8b5052f0b83d692c7ee157f8a44d0a3b272f23257130a8b286c49e7fc830ef54",
-                base_coin: "SUI",
-                quote_coin: "DBUSDC",
-            },
-        ),
-        (
-            "DEEP_DBUSDC",
-            Pool {
-                address: "0x3571bfb4cad9fac64d489a5f1b6b91c66dfc9f21022d65b374a02903c1f2d474",
-                base_coin: "DEEP",
-                quote_coin: "DBUSDC",
-            },
-        ),
-        (
-            "DBUSDT_DBUSDC",
-            Pool {
-                address: "0x4241fb8f4b8965f8df5a8a80d9c42292d35b7b24d7f3831bb555ffe869337416",
-                base_coin: "DBUSDT",
-                quote_coin: "DBUSDC",
-            },
-        ),
-        (
-            "DBUSDT_SUI", // added price deep point
-            Pool {
-                address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
-                base_coin: "DBUSDT",
-                quote_coin: "SUI",
-            },
-        ),
-        (
-            "PI_SUI",
-            Pool {
-                address: "0x4b4dbcbc7ae876e77accc279860a65775bacf73932963be1c3b433cd6e859c24",
-                base_coin: "PI",
-                quote_coin: "SUI",
             },
         ),
     ])
@@ -222,11 +169,120 @@ pub fn get_mainnet_coins() -> HashMap<&'static str, Coin> {
             },
         ),
         (
+            "WUSDT",
+            Coin {
+                address: "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c",
+                coin_type: "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "NS",
+            Coin {
+                address: "0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178",
+                coin_type: "0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "TYPUS",
+            Coin {
+                address: "0xf82dc05634970553615eef6112a1ac4fb7bf10272bf6cbe0f80ef44a6c489385",
+                coin_type: "0xf82dc05634970553615eef6112a1ac4fb7bf10272bf6cbe0f80ef44a6c489385::typus::TYPUS",
+                scalar: 1_000_000_000,
+            },
+        ),
+        (
+            "AUSD",
+            Coin {
+                address: "0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2",
+                coin_type: "0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "DRF",
+            Coin {
+                address: "0x294de7579d55c110a00a7c4946e09a1b5cbeca2592fbb83fd7bfacba3cfeaf0e",
+                coin_type: "0x294de7579d55c110a00a7c4946e09a1b5cbeca2592fbb83fd7bfacba3cfeaf0e::drf::DRF",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "SEND",
+            Coin {
+                address: "0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7",
+                coin_type: "0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND",
+                scalar: 1_000_000,
+            },
+        ),
+        (
+            "WAL",
+            Coin {
+                address: "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59",
+                coin_type: "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL",
+                scalar: 1_000_000_000,
+            },
+        ),
+        (
             "WGIGA",
             Coin {
                 address: "0xec32640add6d02a1d5f0425d72705eb76d9de7edfd4f34e0dba68e62ecceb05b",
                 coin_type: "0xec32640add6d02a1d5f0425d72705eb76d9de7edfd4f34e0dba68e62ecceb05b::coin::COIN",
                 scalar: 100_000,
+            },
+        ),
+    ])
+}
+
+pub fn get_devnet_pools() -> HashMap<&'static str, Pool> {
+    HashMap::from([
+        (
+            "DEEP_SUI", // whitelisted pool
+            Pool {
+                address: "0xfec71b6b2a00bfdb1e41acc43bbcd10c3f4d246973d39cb8bacee0366f79b5d9",
+                base_coin: "DEEP",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "SUI_DBUSDC", // whitelisted pool
+            Pool {
+                address: "0x8b5052f0b83d692c7ee157f8a44d0a3b272f23257130a8b286c49e7fc830ef54",
+                base_coin: "SUI",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DEEP_DBUSDC",
+            Pool {
+                address: "0x3571bfb4cad9fac64d489a5f1b6b91c66dfc9f21022d65b374a02903c1f2d474",
+                base_coin: "DEEP",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DBUSDT_DBUSDC",
+            Pool {
+                address: "0x4241fb8f4b8965f8df5a8a80d9c42292d35b7b24d7f3831bb555ffe869337416",
+                base_coin: "DBUSDT",
+                quote_coin: "DBUSDC",
+            },
+        ),
+        (
+            "DBUSDT_SUI", // added price deep point
+            Pool {
+                address: "0x9e60db786278bbd4912ff6fba077c99cc4f4b984b5c61391e9d9197fb605cbb5",
+                base_coin: "DBUSDT",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "PI_SUI",
+            Pool {
+                address: "0x4b4dbcbc7ae876e77accc279860a65775bacf73932963be1c3b433cd6e859c24",
+                base_coin: "PI",
+                quote_coin: "SUI",
             },
         ),
     ])
@@ -364,6 +420,30 @@ pub fn get_mainnet_pools() -> HashMap<&'static str, Pool> {
             Pool {
                 address: "0x126865a0197d6ab44bfd15fd052da6db92fd2eb831ff9663451bbfa1219e2af2",
                 base_coin: "DRF",
+                quote_coin: "SUI",
+            },
+        ),
+        (
+            "SEND_USDC",
+            Pool {
+                address: "0x1fe7b99c28ded39774f37327b509d58e2be7fff94899c06d22b407496a6fa990",
+                base_coin: "SEND",
+                quote_coin: "USDC",
+            },
+        ),
+        (
+            "WAL_USDC",
+            Pool {
+                address: "0x56a1c985c1f1123181d6b881714793689321ba24301b3585eec427436eb1c76d",
+                base_coin: "WAL",
+                quote_coin: "USDC",
+            },
+        ),
+        (
+            "WAL_SUI",
+            Pool {
+                address: "0x81f5339934c83ea19dd6bcc75c52e83509629a5f71d3257428c2ce47cc94d08b",
+                base_coin: "WAL",
                 quote_coin: "SUI",
             },
         ),

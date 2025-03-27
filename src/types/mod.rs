@@ -5,6 +5,8 @@ use sui_sdk::types::{collection_types::VecSet, id::ID};
 pub struct BalanceManager {
     pub address: &'static str,
     pub trade_cap: Option<&'static str>,
+    pub deposit_cap: Option<&'static str>,
+    pub withdraw_cap: Option<&'static str>,
 }
 
 #[derive(Debug, Clone)]
@@ -138,4 +140,11 @@ pub struct Balances {
 pub struct OrderDeepPrice {
     pub asset_is_base: bool,
     pub deep_per_asset: u64,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct ScaledDeepPrice {
+    pub asset_is_base: bool,
+    pub deep_per_base: Option<f64>,
+    pub deep_per_quote: Option<f64>,
 }

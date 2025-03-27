@@ -3,8 +3,8 @@ use crate::transactions::deep_book::DeepBookContract;
 use crate::transactions::deep_book_admin::DeepBookAdminContract;
 use crate::transactions::flash_loans::FlashLoanContract;
 use crate::transactions::governance::GovernanceContract;
-use crate::types::{Account, BalanceManager, Coin, OrderDeepPrice, Pool};
-use crate::utils::config::DeepBookConfig;
+use crate::types::{Account, BalanceManager, Coin, OrderDeepPrice, Pool, ScaledDeepPrice};
+use crate::utils::config::{DeepBookConfig, FLOAT_SCALAR};
 use anyhow::{Context, Result, anyhow};
 use std::any;
 use std::collections::HashMap;
@@ -308,7 +308,7 @@ impl DeepBookClient {
         Ok(data)
     }
 
-    pub async fn get_pool_deep_price(&self, pool_key: &str) -> Result<OrderDeepPrice> {
+    pub async fn get_pool_deep_price(&self, pool_key: &str) -> Result<ScaledDeepPrice> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         self.deep_book
@@ -350,14 +350,46 @@ impl DeepBookClient {
         let (value_bytes, _type_tag) = return_values;
 
         let data: OrderDeepPrice = bcs::from_bytes(value_bytes)
-            .context("Failed to decode locked balance from transaction response")?;
+            .context("Failed to decode OrderDeepPrice from transaction response")?;
 
-        Ok(data)
+        // Scaling logic
+
+        println!("{:#?}", data);
+
+        let pool = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(&pool.base_coin);
+        let quote_coin = self.config.get_coin(&pool.quote_coin);
+        let deep_coin = self.config.get_coin("DEEP");
+
+        let float_scalar = 1_000_000.0;
+        let deep_per_asset = data.deep_per_asset as f64 / float_scalar;
+
+        let result = if data.asset_is_base {
+            ScaledDeepPrice {
+                asset_is_base: true,
+                deep_per_base: Some(
+                    (deep_per_asset * base_coin.scalar as f64) / deep_coin.scalar as f64,
+                ),
+                deep_per_quote: None,
+            }
+        } else {
+            ScaledDeepPrice {
+                asset_is_base: false,
+                deep_per_base: None,
+                deep_per_quote: Some(
+                    (deep_per_asset * quote_coin.scalar as f64) / deep_coin.scalar as f64,
+                ),
+            }
+        };
+
+        Ok(result)
     }
 
-    pub async fn get_pool_book_params(&self, pool_key: &str) -> Result<(u64, u64, u64)> {
+    pub async fn get_pool_book_params(&self, pool_key: &str) -> Result<(f64, f64, f64)> {
         let mut ptb = ProgrammableTransactionBuilder::new();
-
+        let pool = self.config.get_pool(pool_key);
+        let base_coin = self.config.get_coin(&pool.base_coin);
+        let quote_coin = self.config.get_coin(&pool.quote_coin);
         // Generate the transaction to fetch pool book parameters
         self.deep_book
             .pool_book_params(&mut ptb, pool_key)
@@ -413,10 +445,15 @@ impl DeepBookClient {
         let min_size: u64 = bcs::from_bytes(&return_values[2].0)
             .context("Failed to decode min size from transaction response")?;
 
-        Ok((tick_size, lot_size, min_size))
+        let tick_size_scaled =
+            (tick_size as f64 * base_coin.scalar as f64) / quote_coin.scalar as f64 / FLOAT_SCALAR;
+        let lot_size_scaled = lot_size as f64 / base_coin.scalar as f64;
+        let min_size_scaled = min_size as f64 / base_coin.scalar as f64;
+
+        Ok((tick_size_scaled, lot_size_scaled, min_size_scaled))
     }
 
-    pub async fn get_pool_trade_params(&self, pool_key: &str) -> Result<(u64, u64, u64)> {
+    pub async fn get_pool_trade_params(&self, pool_key: &str) -> Result<(f64, f64, f64)> {
         let mut ptb = ProgrammableTransactionBuilder::new();
 
         // Generate the transaction to fetch pool trade parameters
@@ -474,7 +511,11 @@ impl DeepBookClient {
         let stake_required: u64 = bcs::from_bytes(&return_values[2].0)
             .context("Failed to decode stake required from transaction response")?;
 
-        Ok((taker_fee, maker_fee, stake_required))
+        Ok((
+            taker_fee as f64 / FLOAT_SCALAR,
+            maker_fee as f64 / FLOAT_SCALAR,
+            stake_required as f64 / self.config.get_coin("DEEP").scalar as f64,
+        ))
     }
 
     pub async fn get_pool_id_by_assets(&self, base_type: &str, quote_type: &str) -> Result<ID> {

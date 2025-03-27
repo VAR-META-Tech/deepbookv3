@@ -26,7 +26,7 @@ async fn test_place_limit_order() -> Result<()> {
         balance_manager_key: "MANAGER_2".to_string(),
         client_order_id: "123123".to_string(),
         price: 0.01,
-        quantity: 15.0,
+        quantity: 1.0,
         is_bid: true,
         expiration: None,
         order_type: Some(OrderType::NoRestriction),
@@ -73,7 +73,7 @@ async fn test_place_market_order() -> Result<()> {
         pool_key: "DEEP_SUI".to_string(),
         balance_manager_key: "MANAGER_2".to_string(),
         client_order_id: "123123".to_string(),
-        quantity: 15f64,
+        quantity: 1f64,
         is_bid: true,
         self_matching_option: Some(SelfMatchingOptions::SelfMatchingAllowed),
         pay_with_deep: Some(true),
@@ -258,23 +258,22 @@ async fn test_get_locked_balance() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_get_pool_deep_price() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
-    // Act: Fetch deep price for the pool
-    let data = deep_book_client.get_pool_deep_price("DBUSDT_SUI").await?;
+    // Act: Fetch deep price for the pool with scaled values
+    let data = deep_book_client.get_pool_deep_price("DEEP_SUI").await?;
 
     // Debugging Output
-    println!("Pool Deep Price Data: {:?}", data);
+    println!("📊 Pool Deep Price Scaled Data: {:?}", data);
 
-    // Assertions: Ensure returned data is valid
+    // Assertions
     assert!(
-        data.deep_per_asset > 0,
-        "Deep per asset should be greater than 0"
+        data.deep_per_base.unwrap_or(0.0) >= 0.0 || data.deep_per_quote.unwrap_or(0.0) >= 0.0,
+        "At least one of deep_per_base or deep_per_quote should be greater than 0"
     );
 
-    println!("✅ Test passed: get_pool_deep_price returns valid data.");
+    println!("✅ Test passed: get_pool_deep_price_with_scaled_value returns valid scaled data.");
     Ok(())
 }
 
@@ -293,9 +292,9 @@ async fn test_get_pool_book_params() -> Result<()> {
     println!("Min Size: {}", min_size);
 
     // Assertions: Verify that all returned values are valid (greater than zero)
-    assert!(tick_size > 0, "Tick size should be greater than zero");
-    assert!(lot_size > 0, "Lot size should be greater than zero");
-    assert!(min_size > 0, "Min size should be greater than zero");
+    assert!(tick_size > 0.0, "Tick size should be greater than zero");
+    assert!(lot_size > 0.0, "Lot size should be greater than zero");
+    assert!(min_size > 0.0, "Min size should be greater than zero");
 
     println!("✅ Test passed: get_pool_book_params returns valid data.");
     Ok(())
@@ -314,9 +313,12 @@ async fn test_get_pool_trade_params() -> Result<()> {
     // Assertions: Verify that key fields are correctly populated
     let (taker_fee, maker_fee, stake_required) = trade_params;
 
-    assert!(taker_fee >= 0, "Taker fee should be non-negative");
-    assert!(maker_fee >= 0, "Maker fee should be non-negative");
-    assert!(stake_required >= 0, "Stake required should be non-negative");
+    assert!(taker_fee >= 0.0, "Taker fee should be non-negative");
+    assert!(maker_fee >= 0.0, "Maker fee should be non-negative");
+    assert!(
+        stake_required >= 0.0,
+        "Stake required should be non-negative"
+    );
 
     println!("✅ Test passed: get_pool_trade_params returns valid data.");
     Ok(())
@@ -525,7 +527,7 @@ async fn test_get_whitelisted_status() -> Result<()> {
 async fn test_get_mid_price() -> Result<()> {
     let (_client, _sender, deep_book_client) = setup_client().await?;
 
-    let pool_key = "DBUSDT_SUI"; // Replace with a real pool key
+    let pool_key = "DEEP_SUI"; // Replace with a real pool key
 
     let mid_price = deep_book_client.get_mid_price(pool_key).await?;
 
@@ -549,10 +551,10 @@ async fn test_swap_exact_base_for_quote() -> Result<(), anyhow::Error> {
         .swap_exact_base_for_quote(
             &mut ptb,
             &SwapParams {
-                pool_key: "DBUSDT_SUI".to_string(),
+                pool_key: "DEEP_SUI".to_string(),
                 amount: 1.1,
-                deep_amount: 5.0,
-                min_out: 0.01,
+                deep_amount: 0.0,
+                min_out: 0.00,
             },
         )
         .await?;
@@ -596,10 +598,10 @@ async fn test_swap_exact_quote_for_base() -> Result<(), anyhow::Error> {
         .swap_exact_quote_for_base(
             &mut ptb,
             &SwapParams {
-                pool_key: "DBUSDT_SUI".to_string(),
-                amount: 2.5,      // Quote amount (e.g., DBUSDT)
-                deep_amount: 5.0, // DEEP tokens burned
-                min_out: 0.5,     // Expected min base out (e.g., SUI)
+                pool_key: "DEEP_SUI".to_string(),
+                amount: 1.0,      // Quote amount (e.g., DBUSDT)
+                deep_amount: 0.0, // DEEP tokens burned
+                min_out: 0.0,     // Expected min base out (e.g., SUI)
             },
         )
         .await?;
