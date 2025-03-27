@@ -258,6 +258,7 @@ async fn test_get_locked_balance() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_pool_deep_price() -> Result<()> {
     let (client, sender, deep_book_client) = setup_client().await?;
 
@@ -542,6 +543,7 @@ async fn test_get_mid_price() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_swap_exact_base_for_quote() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
     let mut ptb = ProgrammableTransactionBuilder::new();
@@ -589,6 +591,7 @@ async fn test_swap_exact_base_for_quote() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_swap_exact_quote_for_base() -> Result<(), anyhow::Error> {
     let (client, sender, deep_book_client) = setup_client().await?;
     let mut ptb = ProgrammableTransactionBuilder::new();
