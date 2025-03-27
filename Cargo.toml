@@ -2,6 +2,20 @@
 name = "deepbookv3"
 version = "0.1.0"
 edition = "2024"
+authors = ["Thanh Ngoc ngochc1@gmail.com"]
+description = "Sui DeepBook v3 client SDK in Rust"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/VAR-META-Tech/deepbookv3"
+homepage = "https://www.var-meta.com/"
+readme = "README.md"
+keywords = ["sui","deepbook","deepbookv3", "defi", "sdk", "blockchain"]
+categories = ["cryptography", "api-bindings"]
+
+[lib]
+name = "deepbookv3"
+path = "src/lib.rs"
+
 
 [dependencies]
 sui_sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk" }
