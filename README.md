@@ -35,6 +35,14 @@ deepbookv3 = { path = "../deepbookv3" }
 
 ---
 
+## 🔗 Example Integration
+
+Check out a full sample implementation using this SDK here:
+
+👉 [VAR-META-Tech/deepbookv3-client-sample](https://github.com/VAR-META-Tech/deepbookv3-client-sample)
+
+---
+
 ## 🧱 Features
 
 - BalanceManager support (Deposit, Withdraw, TradeCap, etc.)
