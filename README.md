@@ -30,7 +30,7 @@ Clone the repo and add this in your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-deepbook-v3 = { path = "../deepbook-v3" }
+deepbookv3 = { path = "../deepbookv3" }
 ```
 
 ---
@@ -52,7 +52,7 @@ deepbook-v3 = { path = "../deepbook-v3" }
 ### Initialize the SDK
 
 ```rust
-use deepbook_v3::client::DeepBookClient;
+use deepbookv3::client::DeepBookClient;
 
 let client = SuiClientBuilder::default().build_testnet().await?;
 let sender = SuiAddress::from_str("0xYOURADDRESS")?;
@@ -82,7 +82,7 @@ println!("{} Balance: {}", coin_type, balance);
 ### ✅ Example: Swap exact base for quote
 
 ```rust
-use deepbook_v3::types::SwapParams;
+use deepbookv3::types::SwapParams;
 
 let params = SwapParams {
     pool_key: "DEEP_SUI".to_string(),
