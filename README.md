@@ -21,7 +21,7 @@ This SDK is **battle-tested** on:
 
 ```toml
 [dependencies]
-deepbook-v3 = { git = "https://github.com/your-username/deepbook-v3", branch = "main" }
+deepbookv3 = { git = "https://github.com/VAR-META-Tech/deepbookv3" }
 ```
 
 ### Option 2: Use locally (for development)
